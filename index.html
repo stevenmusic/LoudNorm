@@ -2,14 +2,12 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<!-- 內容型頁面不鎖縮放:這頁是拿來「讀」的,關掉雙指放大會讓小字使用者沒有退路。
-     ScrollScore 是操作型 App 才需要 user-scalable=no,這裡刻意不沿用那一項。 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <!-- 手機瀏覽器的網址列會吃這個顏色。切換淺色主題時 applyTheme() 會一起改,
      不然頁面變白了、上面那條還是黑的,看起來像沒對齊 -->
 <meta name="theme-color" content="#0C0A07">
-<title>LoudMaster — 影片響度母帶處理</title>
-<meta name="description" content="把影片音量提升到 YouTube 標準響度(-14 LUFS / -1 dBTP),不破音、不改變畫質、盡可能不改變音質。">
+<title>LoudMaster — 影片音量一鍵調到 YouTube 標準</title>
+<meta name="description" content="直接在瀏覽器裡把影片或音樂調到 YouTube 標準響度,不破音、不改變畫質。不用安裝任何東西,檔案也不會上傳到伺服器。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -26,6 +24,7 @@
   --line:#2A2415;
   --shadow-sm:0 4px 14px rgba(0,0,0,.35);
   --shadow-md:0 10px 26px rgba(0,0,0,.5);
+  --shadow-lg:0 18px 44px rgba(0,0,0,.6);
   --radius-sm:8px;
   --radius-md:14px;
   --radius-lg:18px;
@@ -40,58 +39,57 @@
   --surface-glass:rgba(32,26,15,.88);
   --surface-inset:rgba(22,18,9,.55);
   --surface-inset-hi:rgba(22,18,9,.75);
+  --scrim:rgba(12,10,7,.88);
   --card-tint:rgba(255,255,255,.035);
-  --code-bg:#0A0805;
+  --danger:#D9724C;
+  --danger-bg:rgba(217,114,76,.1);
   --ok:#7FB069;
   color-scheme:dark;
 }
 
-/* ══ 淺色主題 ══════════════════════════════════════════════════
-   同一組語意變數換一套值,版面與元件完全不用改寫。
-   金色在淺底上必須壓深才看得清楚,這裡沿用 ScrollScore 實測過
-   通過 WCAG AA 的那一組值。 */
+/* ══ 淺色主題 ══════════════════════════════════════════════════ */
 body.light{
   --bg:#FBF7EE;
   --panel:#F4EEE0;
   --panel-2:#EDE6D4;
   --gold:#856418;
   --gold-bright:#6B5115;
-  --ivory:#241E12;        /* 淺色版的「主文字色」,名字沿用但實際是深色 */
+  --ivory:#241E12;
   --muted:#6F6450;
   --muted-bright:#544B3B;
   --line:#D8CDB2;
   --shadow-sm:0 4px 14px rgba(90,72,30,.10);
   --shadow-md:0 10px 26px rgba(90,72,30,.14);
+  --shadow-lg:0 18px 44px rgba(90,72,30,.18);
   --surface-glass:rgba(252,249,241,.92);
   --surface-inset:rgba(255,255,255,.7);
   --surface-inset-hi:rgba(255,255,255,.95);
+  --scrim:rgba(60,48,22,.42);
   --card-tint:rgba(133,100,24,.05);
-  --code-bg:#F2EADA;
+  --danger:#B5502D;
+  --danger-bg:rgba(181,80,45,.08);
   --ok:#3F7D3F;
   color-scheme:light;
 }
 
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{scroll-behavior:smooth}
+html,body{height:100%}
 body{
   background:var(--bg);color:var(--ivory);
   font-family:"Noto Sans TC",sans-serif;
-  font-size:var(--fs-md);line-height:1.8;
-  -webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;
+  min-height:100vh;
 }
-@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 
 /* ── 頂欄 ───────────────────────── */
 header{
-  position:sticky;top:0;z-index:50;
-  display:flex;align-items:center;gap:8px 14px;justify-content:space-between;
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;justify-content:space-between;
   padding:10px 14px;border-bottom:1px solid var(--line);
-  background:var(--surface-glass);
-  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  background:var(--panel);
 }
 header h1{
   font-family:"Noto Serif TC",serif;
-  font-size:clamp(14px, 4.2vw, var(--fs-xl));
+  font-size:clamp(14px, 4vw, var(--fs-lg));
   letter-spacing:clamp(.02em, .5vw, .1em);
   font-weight:700;color:var(--gold);white-space:nowrap;
 }
@@ -103,153 +101,172 @@ header h1 span{color:var(--ivory);font-weight:600}
   border:1px solid var(--gold);background:transparent;color:var(--gold);
   font-family:inherit;font-size:var(--fs-md);font-weight:500;
   padding:8px 16px;height:38px;border-radius:var(--radius-pill);cursor:pointer;
-  transition:background .2s,color .2s;
-  white-space:nowrap;text-decoration:none;
+  transition:background .2s,color .2s;white-space:nowrap;text-decoration:none;
 }
 .btn:hover,.btn:focus-visible{background:var(--gold);color:var(--bg);outline:none}
 .btn.primary{background:var(--gold);color:var(--bg);font-weight:700}
 .btn.primary:hover,.btn.primary:focus-visible{background:var(--gold-bright)}
+.btn.primary:disabled{opacity:.35;cursor:not-allowed;background:var(--gold);color:var(--bg)}
 .btn.icon{width:38px;padding:0;font-size:var(--fs-lg)}
+.btn.ghost{border-color:var(--line);color:var(--muted-bright)}
+.btn.ghost:hover{background:var(--surface-inset-hi);color:var(--ivory);border-color:var(--line)}
 
-/* ── 版心 ───────────────────────── */
-.wrap{max-width:900px;margin:0 auto;padding:0 18px}
-section{padding:52px 0;border-top:1px solid var(--line)}
+/* ── 主舞台 ─────────────────────── */
+main{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:28px 16px;position:relative;
+}
+.stage{width:100%;max-width:560px}
 
-h2{
-  font-family:"Noto Serif TC",serif;
-  font-size:var(--fs-2xl);line-height:1.4;color:var(--gold);
-  letter-spacing:.06em;margin-bottom:8px;font-weight:700;
-}
-.sub{color:var(--muted);font-size:var(--fs-sm);margin-bottom:26px}
-p{color:var(--muted-bright)}
-strong{color:var(--ivory);font-weight:700}
-a{color:var(--gold);text-underline-offset:3px}
-a:hover{color:var(--gold-bright)}
+/* 各狀態切換:一次只顯示一個區塊 */
+.panel{display:none}
+[data-state="empty"] .panel-empty,
+[data-state="ready"] .panel-ready,
+[data-state="working"] .panel-working,
+[data-state="done"] .panel-done,
+[data-state="error"] .panel-error{display:block}
 
-/* ── Hero ───────────────────────── */
-.hero{padding:56px 0 44px;text-align:center}
-.hero .kicker{
-  font-size:var(--fs-xs);letter-spacing:.22em;color:var(--muted);
-  text-transform:uppercase;margin-bottom:16px;
+/* ── 空狀態:載入卡 ───────────────── */
+.empty-card{
+  display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;
+  padding:48px 32px;background:var(--surface-inset);border:1px solid var(--line);
+  border-radius:var(--radius-lg);cursor:pointer;
+  transition:background-color .15s,border-color .15s;
 }
-.hero h2{
-  font-size:clamp(27px, 7.2vw, 42px);color:var(--ivory);
-  letter-spacing:.02em;margin-bottom:14px;
+.empty-card:hover,.empty-card:focus-visible,.empty-card.drag{
+  background:var(--surface-inset-hi);border-color:var(--gold);outline:none;
 }
-.hero h2 em{font-style:normal;color:var(--gold)}
-.hero .lead{max-width:520px;margin:0 auto;font-size:var(--fs-lg);color:var(--muted-bright)}
-.hero-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:28px 0 34px}
+.empty-card .mark{
+  display:flex;align-items:center;justify-content:center;
+  width:64px;height:64px;border-radius:50%;
+  background:rgba(201,162,75,.12);color:var(--gold);margin-bottom:4px;
+}
+.empty-card .empty-title{font-size:var(--fs-lg);line-height:1.5;color:var(--ivory);font-weight:600}
+.empty-card .empty-sub{font-size:var(--fs-sm);line-height:1.7;color:var(--muted)}
+.privacy-note{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  margin-top:16px;font-size:var(--fs-xs);color:var(--muted);text-align:center;
+}
 
-/* ── 終端機示範 ─────────────────────
-   overflow-x:auto 是關鍵:中文頁面裡的指令列一定會比手機螢幕寬,
-   沒有這一行,右邊的內容會直接被裁掉而且救不回來。 */
-pre{
-  background:var(--code-bg);border:1px solid var(--line);border-radius:var(--radius-md);
-  padding:16px 18px;overflow-x:auto;-webkit-overflow-scrolling:touch;
-  text-align:left;box-shadow:var(--shadow-sm);
-}
-pre code{
-  font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Noto Sans Mono",monospace;
-  font-size:var(--fs-sm);line-height:1.7;color:var(--ivory);
-  white-space:pre;display:block;
-}
-code{
-  font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Noto Sans Mono",monospace;
-  font-size:.92em;background:var(--card-tint);color:var(--gold-bright);
-  padding:2px 6px;border-radius:var(--radius-sm);
-}
-pre code .c{color:var(--muted)}
-pre code .g{color:var(--gold)}
-pre code .ok{color:var(--ok)}
-.hint{font-size:var(--fs-xs);color:var(--muted);text-align:center;margin-top:10px}
-
-/* ── 原則橫幅 ───────────────────── */
-.principle{
-  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
-  background:var(--panel);padding:26px 0;text-align:center;
-}
-.principle .big{
-  font-family:"Noto Serif TC",serif;font-size:clamp(17px,4.4vw,23px);
-  color:var(--gold-bright);line-height:1.6;margin-bottom:6px;
-}
-.principle small{color:var(--muted);font-size:var(--fs-sm)}
-
-/* ── 數據條 ─────────────────────── */
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center}
-.stat{
-  background:var(--surface-inset);border:1px solid var(--line);
-  border-radius:var(--radius-lg);padding:20px 10px;
-}
-.stat b{
-  display:block;font-family:"Noto Serif TC",serif;
-  font-size:clamp(17px,4.2vw,25px);color:var(--gold-bright);
-  font-variant-numeric:tabular-nums;line-height:1.3;
-}
-.stat span{display:block;font-size:var(--fs-xs);color:var(--muted);margin-top:6px}
-@media (max-width:620px){.stats{grid-template-columns:repeat(2,1fr)}}
-
-/* ── 卡片 ───────────────────────── */
-.cards{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+/* ── 就緒 / 完成 卡片 ────────────── */
 .card{
-  background:var(--surface-inset);border:1px solid var(--line);
-  border-radius:var(--radius-lg);padding:22px;
-  transition:border-color .15s,background-color .15s;
+  background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius-lg);
+  padding:22px 24px;box-shadow:var(--shadow-sm);
 }
-.card:hover{background:var(--surface-inset-hi);border-color:var(--gold)}
-.card .mark{
-  display:flex;align-items:center;justify-content:center;
-  width:42px;height:42px;border-radius:50%;
-  background:var(--card-tint);color:var(--gold);margin-bottom:12px;
+.file-row{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.file-row .mark{
+  flex:none;display:flex;align-items:center;justify-content:center;
+  width:40px;height:40px;border-radius:50%;
+  background:var(--card-tint);color:var(--gold);
 }
-.card h3{
-  font-family:"Noto Serif TC",serif;font-size:var(--fs-lg);
-  color:var(--ivory);font-weight:600;margin-bottom:6px;
-}
-.card p{font-size:var(--fs-sm);line-height:1.75;color:var(--muted)}
+.file-row .name{font-weight:600;color:var(--ivory);word-break:break-all;font-size:var(--fs-md)}
+.file-row .meta{font-size:var(--fs-xs);color:var(--muted);margin-top:2px}
 
-/* ── 三步驟 ─────────────────────── */
-.steps{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));counter-reset:step;list-style:none}
-.steps li{counter-increment:step;padding-left:44px;position:relative;color:var(--muted);font-size:var(--fs-sm);line-height:1.75}
-.steps li::before{
-  content:counter(step);position:absolute;left:0;top:0;
-  width:30px;height:30px;border-radius:50%;
-  background:var(--card-tint);border:1px solid var(--gold);color:var(--gold);
-  display:flex;align-items:center;justify-content:center;
-  font-size:var(--fs-sm);font-weight:700;font-variant-numeric:tabular-nums;
+.field{margin-bottom:16px}
+.field label{
+  display:block;font-size:var(--fs-xs);color:var(--muted);
+  letter-spacing:.06em;margin-bottom:6px;text-transform:uppercase;
 }
-.steps li b{display:block;color:var(--ivory);font-size:var(--fs-md);font-weight:600;margin-bottom:2px}
+select{
+  width:100%;background:var(--surface-inset);border:1px solid var(--line);color:var(--ivory);
+  font-family:inherit;font-size:var(--fs-md);padding:10px 12px;border-radius:var(--radius-sm);
+  appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238A7D5F' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:34px;
+}
+select:focus{outline:none;border-color:var(--gold)}
+.field .hint{font-size:var(--fs-xs);color:var(--muted);margin-top:6px;line-height:1.6}
 
-/* ── 快速開始 ───────────────────── */
-.start{display:grid;gap:18px;grid-template-columns:1fr 1fr}
-@media (max-width:680px){.start{grid-template-columns:1fr}}
-.start h3{
-  font-family:"Noto Serif TC",serif;font-size:var(--fs-lg);color:var(--ivory);
-  font-weight:600;margin-bottom:8px;
+.actions{display:flex;gap:10px;margin-top:20px}
+.actions .btn{flex:1}
+
+/* ── 處理中 ───────────────────────
+   仿 ScrollScore 匯出畫面:標題帶百分比、大字時間、警示卡、圓形取消鈕。 */
+.working-title{
+  font-family:"Noto Serif TC",serif;font-size:var(--fs-xl);color:var(--gold);
+  text-align:center;margin-bottom:14px;letter-spacing:.04em;
 }
-.start pre{margin-bottom:0}
-.start p{font-size:var(--fs-sm);color:var(--muted);margin-top:8px}
-.more{
-  margin-top:26px;padding-top:20px;border-top:1px dashed var(--line);
-  font-size:var(--fs-sm);color:var(--muted);text-align:center;
+.working-time{
+  font-family:"Noto Serif TC",serif;font-size:clamp(24px,7vw,32px);color:var(--gold-bright);
+  text-align:center;margin-bottom:20px;font-variant-numeric:tabular-nums;letter-spacing:.02em;
 }
+.progress-track{
+  height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:20px;
+}
+.progress-fill{
+  height:100%;background:var(--gold);border-radius:3px;width:0%;
+  transition:width .25s ease;
+}
+.working-warn{
+  border:1px solid var(--gold);border-radius:var(--radius-md);
+  padding:14px 16px;margin-bottom:16px;background:var(--card-tint);
+}
+.working-warn .t{
+  display:flex;align-items:center;gap:8px;color:var(--gold-bright);
+  font-weight:600;font-size:var(--fs-sm);margin-bottom:6px;
+}
+.working-warn p{font-size:var(--fs-xs);color:var(--muted-bright);line-height:1.7;margin:0}
+.working-caption{font-size:var(--fs-xs);color:var(--muted);text-align:center;margin-bottom:22px}
+.cancel-circle{
+  display:flex;align-items:center;justify-content:center;margin:0 auto;
+  width:64px;height:64px;border-radius:50%;
+  border:1px solid var(--gold);background:transparent;color:var(--gold);
+  font-family:inherit;font-size:var(--fs-sm);cursor:pointer;transition:background .2s,color .2s;
+}
+.cancel-circle:hover,.cancel-circle:focus-visible{background:var(--gold);color:var(--bg);outline:none}
+.log-toggle{
+  display:block;margin:18px auto 0;font-size:var(--fs-xs);color:var(--muted);
+  background:none;border:none;cursor:pointer;text-decoration:underline;text-underline-offset:3px;
+}
+.log-box{
+  margin-top:10px;background:var(--code-bg,#0A0805);border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:10px 12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;
+  color:var(--muted-bright);max-height:160px;overflow-y:auto;white-space:pre-wrap;display:none;
+}
+.log-box.open{display:block}
+
+/* ── 完成 ───────────────────────── */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.stat-box{
+  background:var(--surface-inset);border:1px solid var(--line);border-radius:var(--radius-md);
+  padding:14px 12px;text-align:center;
+}
+.stat-box .lbl{font-size:var(--fs-2xs);color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.stat-box .before{font-size:var(--fs-sm);color:var(--muted);font-variant-numeric:tabular-nums;margin-top:6px}
+.stat-box .arrow{color:var(--muted);margin:0 4px}
+.stat-box .after{font-size:var(--fs-lg);color:var(--gold-bright);font-variant-numeric:tabular-nums;font-weight:700}
+.result-note{font-size:var(--fs-sm);color:var(--muted-bright);line-height:1.75;margin-bottom:16px}
+.result-note strong{color:var(--ivory)}
+video.preview{width:100%;border-radius:var(--radius-md);margin-bottom:16px;background:#000;display:block}
+.warn-box{
+  background:var(--danger-bg);border:1px solid var(--danger);border-radius:var(--radius-md);
+  padding:12px 14px;font-size:var(--fs-sm);color:var(--danger);line-height:1.7;margin-bottom:16px;
+}
+
+/* ── 錯誤 ───────────────────────── */
+.error-card{
+  text-align:center;padding:36px 28px;background:var(--surface-inset);
+  border:1px solid var(--danger);border-radius:var(--radius-lg);
+}
+.error-card .mark{
+  width:56px;height:56px;border-radius:50%;background:var(--danger-bg);color:var(--danger);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 14px;
+}
+.error-card p{font-size:var(--fs-sm);color:var(--muted-bright);line-height:1.75;margin-bottom:18px;white-space:pre-line}
 
 /* ── 頁尾 ───────────────────────── */
 footer{
+  padding:14px 16px calc(14px + env(safe-area-inset-bottom));
   border-top:1px solid var(--line);background:var(--panel);
-  padding:26px 18px calc(26px + env(safe-area-inset-bottom));
-  text-align:center;font-size:var(--fs-xs);color:var(--muted);
+  font-size:var(--fs-xs);color:var(--muted);text-align:center;
 }
-footer .brand{
-  font-family:"Noto Serif TC",serif;color:var(--gold);
-  letter-spacing:.1em;font-size:var(--fs-sm);margin-bottom:6px;
-}
-footer a{margin:0 8px;white-space:nowrap}
+footer a{color:var(--gold);text-decoration:none}
+footer a:hover{color:var(--gold-bright)}
 
-@media (max-width:600px){
-  section{padding:40px 0}
-  .wrap{padding:0 15px}
-  .hero{padding:40px 0 34px}
-  pre{padding:14px}
+@media (max-width:480px){
+  .stats{grid-template-columns:1fr 1fr}
+  .card,.empty-card{padding:26px 18px}
+  .actions{flex-direction:column}
 }
 </style>
 </head>
@@ -259,152 +276,601 @@ footer a{margin:0 8px;white-space:nowrap}
   <h1>Loud<span>Master</span></h1>
   <div class="header-right">
     <button class="btn icon" id="themeToggle" title="切換淺色 / 深色" aria-label="切換淺色或深色主題">◐</button>
-    <a class="btn" href="https://github.com/stevenmusic/LoudNorm">GitHub</a>
+    <a class="btn" href="help.html">說明</a>
   </div>
 </header>
 
-<div class="hero wrap">
-  <p class="kicker">EBU R128 · ITU-R BS.1770</p>
-  <h2>把影片音量調到<em>剛剛好</em></h2>
-  <p class="lead">自動提升到 YouTube 標準響度。不破音、不改變畫質，輸出可以直接上傳的成品。</p>
-  <div class="hero-actions">
-    <a class="btn primary" href="#start">開始使用</a>
-    <a class="btn" href="https://github.com/stevenmusic/LoudNorm#readme">完整說明</a>
-  </div>
+<main data-state="empty" id="app">
 
-<pre><code><span class="c">$</span> <span class="g">./loudnorm 我的影片.mp4</span>
+  <div class="stage">
 
-<span class="ok">✓</span> 完成：我的影片_loudnorm.mp4
-   目標   -14.00 LUFS    -1.00 dBTP   （YouTube）
-   原始   -28.43 LUFS   -12.10 dBTP
-   成品   -14.02 LUFS    -1.20 dBTP
-   處理  提升 14.41 dB（純增益，不改變音質）
-   影像  h264 1920x1080 原封不動複製（未重新編碼）</code></pre>
-  <p class="hint">左右滑動可看完整輸出</p>
-</div>
-
-<div class="principle">
-  <div class="wrap">
-    <p class="big">能用純增益解決的，就絕不做動態處理。</p>
-    <small>只有峰值真的不夠用時才啟用真實峰值限幅器，而且只用在差的那幾 dB。</small>
-  </div>
-</div>
-
-<section class="wrap" style="border-top:none">
-  <h2>實測數據</h2>
-  <p class="sub">不是設計目標，是開發時實際跑出來的數字。</p>
-  <div class="stats">
-    <div class="stat"><b>-14.0</b><span>LUFS 達標<br>誤差 &lt; 0.05 dB</span></div>
-    <div class="stat"><b>-1.2</b><span>dBTP 峰值<br>穩守上限內</span></div>
-    <div class="stat"><b>0.000</b><span>ms 影音位移<br>限幅已補償</span></div>
-    <div class="stat"><b>MD5</b><span>影像串流<br>位元完全相同</span></div>
-  </div>
-</section>
-
-<section class="wrap">
-  <h2>三個「不改變」</h2>
-  <p class="sub">每一項都可以自己驗證。</p>
-  <div class="cards">
-    <div class="card">
-      <div class="mark" aria-hidden="true">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m10 9 5 3-5 3z" fill="currentColor" stroke="none"/></svg>
+    <!-- 空狀態:載入檔案 -->
+    <div class="panel panel-empty">
+      <div class="empty-card" id="emptyCard" role="button" tabindex="0" aria-label="載入影片或音樂檔">
+        <div class="mark" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13m0-13 5 5m-5-5-5 5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+        </div>
+        <p class="empty-title">點擊這裡載入影片或音樂,開始使用</p>
+        <p class="empty-sub">支援 MP4 / MOV / WebM / MP3 / WAV 等常見格式</p>
       </div>
-      <h3>畫質完全不變</h3>
-      <p>影像軌直接複製，從頭到尾沒有解碼、沒有重新編碼。來源與成品的影像串流 MD5 完全相同。</p>
+      <p class="privacy-note">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V6z"/></svg>
+        全程在你的瀏覽器裡處理,檔案不會上傳到任何伺服器
+      </p>
+      <input type="file" id="fileInput" accept="video/*,audio/*" hidden>
     </div>
-    <div class="card">
-      <div class="mark" aria-hidden="true">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l3-8 4 16 3-8h5"/></svg>
+
+    <!-- 就緒:選平台、開始 -->
+    <div class="panel panel-ready">
+      <div class="card">
+        <div class="file-row">
+          <div class="mark" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13m0-13 5 5m-5-5-5 5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          </div>
+          <div>
+            <div class="name" id="fileName">—</div>
+            <div class="meta" id="fileMeta">讀取中…</div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="presetSelect">響度目標</label>
+          <select id="presetSelect">
+            <option value="youtube" selected>YouTube（-14 LUFS / -1 dBTP）</option>
+            <option value="spotify">Spotify（-14 LUFS / -1 dBTP）</option>
+            <option value="tiktok">TikTok / Instagram（-14 LUFS / -1 dBTP）</option>
+            <option value="apple">Apple Music / Podcasts（-16 LUFS / -1 dBTP）</option>
+            <option value="broadcast">廣播電視 EBU R128（-23 LUFS / -1 dBTP）</option>
+          </select>
+          <p class="hint" id="presetHint"></p>
+        </div>
+
+        <div class="warn-box" id="sizeWarnBox" hidden></div>
+
+        <div class="actions">
+          <button class="btn ghost" id="chooseAnother">換一個檔案</button>
+          <button class="btn primary" id="startBtn" disabled>開始處理</button>
+        </div>
       </div>
-      <h3>不做動態處理</h3>
-      <p>全程 64-bit 浮點。輸出 <code>.mkv</code>／<code>.mov</code> 時音訊存成無損，等於原始訊號乘上一個固定增益。</p>
     </div>
-    <div class="card">
-      <div class="mark" aria-hidden="true">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
+
+    <!-- 處理中 -->
+    <div class="panel panel-working">
+      <div class="card">
+        <p class="working-title" id="progressStage">準備中 0%</p>
+        <p class="working-time" id="progressTime">0:00 / 0:00</p>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="working-warn">
+          <div class="t">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
+            請讓這個分頁保持在最前面
+          </div>
+          <p>切到其他分頁、鎖定螢幕，處理可能會被瀏覽器暫停，需要重新開始。</p>
+        </div>
+        <p class="working-caption">處理時間依裝置效能而不同，完成後會自動顯示成品。</p>
+        <button class="cancel-circle" id="cancelBtn" aria-label="取消處理" title="取消">取消</button>
+        <button class="log-toggle" id="logToggle">顯示詳細記錄</button>
+        <div class="log-box" id="logBox"></div>
       </div>
-      <h3>不破音</h3>
-      <p>峰值以 4 倍超取樣的真實峰值為準，而不是取樣點峰值。成品會再量一次確認沒有超標。</p>
     </div>
+
+    <!-- 完成 -->
+    <div class="panel panel-done">
+      <div class="card">
+        <video class="preview" id="previewVideo" controls playsinline hidden></video>
+        <div class="warn-box" id="warnBox" hidden></div>
+        <div class="stats">
+          <div class="stat-box">
+            <div class="lbl">整合響度</div>
+            <div class="before" id="statLufsBefore">—</div>
+            <div class="after" id="statLufsAfter">—</div>
+          </div>
+          <div class="stat-box">
+            <div class="lbl">真實峰值</div>
+            <div class="before" id="statTpBefore">—</div>
+            <div class="after" id="statTpAfter">—</div>
+          </div>
+        </div>
+        <p class="result-note" id="resultNote"></p>
+        <div class="actions">
+          <button class="btn ghost" id="resetBtn">處理另一個</button>
+          <a class="btn primary" id="downloadBtn" download>下載成品</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 錯誤 -->
+    <div class="panel panel-error">
+      <div class="error-card">
+        <div class="mark" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+        </div>
+        <p id="errorMessage">發生錯誤。</p>
+        <button class="btn primary" id="errorResetBtn">再試一次</button>
+      </div>
+    </div>
+
   </div>
-</section>
 
-<section class="wrap">
-  <h2>怎麼運作</h2>
-  <p class="sub">跟母帶工程師一樣的流程。</p>
-  <ol class="steps">
-    <li><b>量測</b>依 EBU R128 量測整支片的響度與真實峰值。有加配樂就量混完之後的結果。</li>
-    <li><b>決定</b>算出需要幾 dB。峰值餘裕夠就純增益結束；不夠才動用限幅，並回頭試算修正。</li>
-    <li><b>輸出並驗收</b>一次編碼完成，影像直接複製。最後重新量測成品，把實際數字報給你。</li>
-  </ol>
-</section>
-
-<section class="wrap" id="start">
-  <h2>開始使用</h2>
-  <p class="sub">只需要 ffmpeg 和 Python，不必安裝任何 Python 套件。</p>
-  <div class="start">
-    <div>
-      <h3>1. 安裝 ffmpeg</h3>
-<pre><code><span class="c"># macOS</span>
-<span class="g">brew install ffmpeg</span>
-
-<span class="c"># Windows</span>
-<span class="g">winget install Gyan.FFmpeg</span>
-
-<span class="c"># Ubuntu / Debian</span>
-<span class="g">sudo apt install ffmpeg</span></code></pre>
-    </div>
-    <div>
-      <h3>2. 執行</h3>
-<pre><code><span class="c"># 圖形介面（或雙擊 launcher）</span>
-<span class="g">python3 -m loudmaster --gui</span>
-
-<span class="c"># 指令列</span>
-<span class="g">./loudnorm 影片.mp4</span>
-
-<span class="c"># 輸出無損音訊</span>
-<span class="g">./loudnorm 影片.mp4 -o 成品.mkv</span></code></pre>
-    </div>
-  </div>
-  <p class="more">
-    支援 YouTube／Spotify／Apple／TikTok／EBU R128 等 8 種平台預設，也可自訂目標。<br>
-    批次處理、匯入配樂、自動避讓、無損輸出等完整選項請見
-    <a href="https://github.com/stevenmusic/LoudNorm#readme">說明文件</a>。
-  </p>
-</section>
+</main>
 
 <footer>
-  <div class="brand">LoudMaster</div>
-  <div>影片響度母帶處理 · 以 EBU R128 為準</div>
-  <div style="margin-top:10px">
-    <a href="https://github.com/stevenmusic/LoudNorm">原始碼</a>·<a href="https://github.com/stevenmusic/LoudNorm#readme">說明文件</a>·<a href="https://github.com/stevenmusic/LoudNorm/issues">回報問題</a>
-  </div>
+  <span id="engineStatus">正在載入處理引擎…</span>
 </footer>
 
-<script>
-/* 主題切換:預設深色(跟 ScrollScore 一致),使用者選過就記住。
-   localStorage 在部分隱私模式下會丟例外,失敗就當作沒存過,不影響頁面其他部分。 */
-(function(){
-  var KEY = "loudmaster-theme";
-  var toggle = document.getElementById("themeToggle");
+<script type="module">
+import { FFmpeg } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js";
+import { toBlobURL, fetchFile } from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js";
 
-  function apply(light){
-    document.body.classList.toggle("light", light);
-    var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", light ? "#FBF7EE" : "#0C0A07");
-    toggle.setAttribute("aria-pressed", light ? "true" : "false");
+const CORE_BASE = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm";
+
+/* ════════════════════════════════════════════════════════════════
+   響度母帶引擎
+   跟桌面版 Python 工具同一套邏輯:先量測、算出需要的增益,峰值不夠用
+   才動用限幅器,而且只用在差的那幾 dB。
+
+   有一個瀏覽器特有的限制:ffmpeg.wasm 的核心沒有編譯 libsoxr(實測
+   確認:"Requested resampling engine is unavailable"),只能用預設的
+   swr 重取樣。swr 在「限幅之後再做有損編碼」這個組合下,會讓真實峰值
+   比預期多超出約 1 dB——這是編碼器重建波形時產生的,不是限幅器沒做好。
+   所以這裡:(1) 靜態安全邊界比桌面版多留 1.1 dB,(2) 成品做完之後真的
+   重新量一次,如果還是超標就照量到的超出量再修正、重跑一次。
+   ════════════════════════════════════════════════════════════════ */
+
+const PRESETS = {
+  youtube:  { label: "YouTube",                 i: -14, tp: -1, note: "YouTube 播放時只會把過響的影片轉小聲,不會把小聲的轉大聲。" },
+  spotify:  { label: "Spotify",                  i: -14, tp: -1, note: "Spotify 預設的 Normal 音量模式目標。" },
+  tiktok:   { label: "TikTok / Instagram",       i: -14, tp: -1, note: "手機短影音平台實測的正規化目標。" },
+  apple:    { label: "Apple Music / Podcasts",   i: -16, tp: -1, note: "Apple 的 Sound Check 目標。" },
+  broadcast:{ label: "廣播電視 EBU R128",         i: -23, tp: -1, note: "歐洲廣播規範 EBU R128 的交件標準。" },
+};
+
+const BASE_TP_SAFETY = 0.2;
+const NO_SOXR_EXTRA_SAFETY = 1.1;
+const TP_SAFETY = BASE_TP_SAFETY + NO_SOXR_EXTRA_SAFETY;
+const MAX_LIMITING_DB = 6.0;
+const CORRECTION_TOLERANCE = 0.05;
+const MAX_CORRECTIONS = 2;
+const SILENCE_FLOOR = -70;
+
+// 輸出容器/編碼對應表:影像一律串流複製(位元不變),音訊依容器選擇可用的編碼。
+const VIDEO_RULES = [
+  { codecs: ["h264", "hevc", "mpeg4"], container: "mp4", audioCodec: "aac",    audioArgs: ["-b:a", "192k"] },
+  { codecs: ["vp8", "vp9", "av1"],     container: "webm", audioCodec: "libopus", audioArgs: ["-b:a", "160k"] },
+];
+
+function parseLoudnormJSON(text) {
+  const end = text.lastIndexOf("}");
+  const start = text.lastIndexOf("{", end);
+  if (start === -1 || end === -1) return null;
+  try { return JSON.parse(text.slice(start, end + 1)); } catch (e) { return null; }
+}
+
+function toFloatOrNull(v) {
+  if (v == null) return null;
+  const s = String(v).trim();
+  if (!s || s.toLowerCase().includes("inf") || s.toLowerCase() === "nan") return null;
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+function dbToLinear(db) { return Math.pow(10, db / 20); }
+
+class Engine {
+  constructor(onLog, onProgress) {
+    this.ffmpeg = new FFmpeg();
+    this.onLog = onLog || (() => {});
+    this.onProgress = onProgress || (() => {});
+    this.ffmpeg.on("log", ({ message }) => this.onLog(message));
+    // progress is a 0..1 fraction of the CURRENT exec() call; time is the
+    // processed position in microseconds. Both reset every pass, so the
+    // caller re-derives "elapsed / total" against that pass's own duration.
+    this.ffmpeg.on("progress", ({ progress, time }) => {
+      this.onProgress(Math.max(0, Math.min(1, progress)), time / 1_000_000);
+    });
   }
 
-  var saved = null;
+  async load() {
+    await this.ffmpeg.load({
+      coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, "text/javascript"),
+      wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, "application/wasm"),
+    });
+  }
+
+  async writeInput(file) {
+    this.inputName = "input" + (file.name.match(/\.[^.]+$/)?.[0] || "");
+    await this.ffmpeg.writeFile(this.inputName, await fetchFile(file));
+  }
+
+  /** 探測檔案資訊。ffmpeg.wasm 沒有內建 ffprobe,用 `ffmpeg -i` 印到 stderr 的資訊代替。 */
+  async probe() {
+    let captured = "";
+    const capture = ({ message }) => { captured += message + "\n"; };
+    this.ffmpeg.on("log", capture);
+    try { await this.ffmpeg.exec(["-i", this.inputName]); } catch (e) { /* 預期會失敗,只是沒有指定輸出 */ }
+    this.ffmpeg.off("log", capture);
+
+    const durationMatch = captured.match(/Duration:\s*(\d+):(\d+):(\d+\.?\d*)/);
+    const duration = durationMatch
+      ? (+durationMatch[1]) * 3600 + (+durationMatch[2]) * 60 + parseFloat(durationMatch[3])
+      : 0;
+
+    const videoMatch = captured.match(/Stream #\d+:\d+.*?Video:\s*([a-zA-Z0-9_]+).*?(\d{2,5})x(\d{2,5})/);
+    const audioMatch = captured.match(/Stream #\d+:\d+.*?Audio:\s*([a-zA-Z0-9_]+).*?(\d+)\s*Hz,\s*(mono|stereo|[\d.]+)/);
+
+    if (!videoMatch && !audioMatch) {
+      throw new Error("無法讀取這個檔案,可能不是有效的影片或音訊檔。");
+    }
+
+    return {
+      duration,
+      hasVideo: !!videoMatch,
+      videoCodec: videoMatch ? normaliseCodec(videoMatch[1]) : null,
+      width: videoMatch ? +videoMatch[2] : 0,
+      height: videoMatch ? +videoMatch[3] : 0,
+      hasAudio: !!audioMatch,
+      audioCodec: audioMatch ? audioMatch[1] : null,
+      sampleRate: audioMatch ? +audioMatch[2] : 48000,
+      channelLayout: audioMatch ? audioMatch[3] : "stereo",
+      dualMono: audioMatch ? audioMatch[3] === "mono" : false,
+      raw: captured,
+    };
+  }
+
+  async measure(fileName, targetI, targetTP, dualMono) {
+    let captured = "";
+    const capture = ({ message }) => { captured += message + "\n"; };
+    this.ffmpeg.on("log", capture);
+    const dm = dualMono ? ":dual_mono=true" : "";
+    await this.ffmpeg.exec([
+      "-i", fileName, "-filter_complex",
+      `[0:a:0]aformat=sample_fmts=dbl,loudnorm=I=${targetI}:TP=${targetTP}:print_format=json${dm}[m]`,
+      "-map", "[m]", "-f", "null", "-",
+    ]);
+    this.ffmpeg.off("log", capture);
+    const j = parseLoudnormJSON(captured);
+    if (!j) throw new Error("量測失敗,無法解析響度資訊。");
+    return { i: toFloatOrNull(j.input_i), tp: toFloatOrNull(j.input_tp) };
+  }
+
+  /** 跟桌面版 mastering.py 完全相同的決策邏輯。 */
+  plan(inputI, inputTP, targetI, targetTP) {
+    if (inputI === null || inputI <= SILENCE_FLOOR) {
+      throw new Error("這個檔案的音訊是(接近)無聲,無法計算需要提升多少音量。");
+    }
+    const ceiling = targetTP - TP_SAFETY;
+    const measuredTP = inputTP ?? 0;
+    const desiredGain = targetI - inputI;
+    const headroom = ceiling - measuredTP;
+
+    if (desiredGain <= headroom + 1e-9) {
+      return { gainDb: desiredGain, useLimiter: false, ceiling, headroom, limitingDb: 0 };
+    }
+    const overshoot = desiredGain - headroom;
+    const applied = Math.min(overshoot, MAX_LIMITING_DB);
+    const shortfall = Math.max(0, overshoot - applied);
+    return { gainDb: headroom + applied, useLimiter: true, ceiling, headroom, limitingDb: applied, shortfallDb: shortfall };
+  }
+
+  buildAudioChain(gainDb, useLimiter, ceilingDb) {
+    let chain = "aformat=sample_fmts=dbl";
+    if (Math.abs(gainDb) > 1e-9) chain += `,volume=${gainDb.toFixed(6)}dB:precision=double`;
+    if (useLimiter) {
+      const linear = dbToLinear(ceilingDb);
+      chain += `,aresample=192000,alimiter=limit=${linear.toFixed(6)}:attack=5:release=50:asc=1:level=false:latency=1,aresample=48000`;
+    }
+    return chain;
+  }
+
+  /**
+   * 輸出並自動驗證。如果成品的真實峰值量出來還是超標,就照超出的量precisely
+   * 修正一次再重跑——這裡的保證來自「量出來的數字」,不是假設安全邊際一定夠。
+   */
+  async renderAndVerify(outputPlan, targetI, targetTP, dualMono, container, audioCodec, audioArgs, hasVideo, onStage) {
+    let plan = { ...outputPlan };
+    const outputName = "output." + container;
+    let corrections = 0;
+    let finalStats = null;
+
+    while (true) {
+      onStage(corrections === 0 ? "輸出成品" : `修正峰值（第 ${corrections} 次）`);
+      const chain = this.buildAudioChain(plan.gainDb, plan.useLimiter, plan.ceiling);
+      try { await this.ffmpeg.deleteFile(outputName); } catch (e) {}
+
+      const args = ["-i", this.inputName, "-filter_complex", `[0:a:0]${chain}[out]`];
+      if (hasVideo) args.push("-map", "0:v");
+      args.push("-map", "[out]");
+      if (hasVideo) args.push("-c:v", "copy");
+      args.push("-c:a", audioCodec, ...audioArgs, outputName);
+      await this.ffmpeg.exec(args);
+
+      onStage("驗證成品");
+      finalStats = await this.measure(outputName, targetI, targetTP, dualMono);
+
+      if (finalStats.tp === null || finalStats.tp <= targetTP + CORRECTION_TOLERANCE || corrections >= MAX_CORRECTIONS) {
+        break;
+      }
+      const excess = finalStats.tp - targetTP + 0.05;
+      plan = { ...plan, gainDb: plan.gainDb - excess, ceiling: plan.ceiling - excess };
+      corrections++;
+    }
+
+    const data = await this.ffmpeg.readFile(outputName);
+    return { data, outputName, finalStats, corrections, plan };
+  }
+}
+
+function normaliseCodec(c) {
+  const m = { "h264": "h264", "hevc": "hevc", "h265": "hevc", "vp8": "vp8", "vp9": "vp9", "av1": "av1", "mpeg4": "mpeg4" };
+  return m[c.toLowerCase()] || c.toLowerCase();
+}
+
+function chooseOutput(info) {
+  if (!info.hasVideo) {
+    return { container: "wav", audioCodec: "pcm_s16le", audioArgs: [], hasVideo: false, lossless: true };
+  }
+  const rule = VIDEO_RULES.find((r) => r.codecs.includes(info.videoCodec));
+  if (!rule) return null;
+  return { container: rule.container, audioCodec: rule.audioCodec, audioArgs: rule.audioArgs, hasVideo: true, lossless: false };
+}
+
+/* ════════════════════════════════════════════════════════════════
+   UI 狀態機
+   ════════════════════════════════════════════════════════════════ */
+
+function formatTime(seconds) {
+  seconds = Math.max(0, Math.round(seconds || 0));
+  const m = Math.floor(seconds / 60), s = seconds % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+const app = document.getElementById("app");
+const $ = (id) => document.getElementById(id);
+let engine = null;
+// The running Engine's onProgress callback is fixed at construction time, but
+// which pass it belongs to changes as we move through the job — these two are
+// updated before each ffmpeg.exec() call and read back inside the callback.
+let progressStageLabel = "";
+let progressTotalSeconds = 0;
+
+function renderProgress(fraction, elapsedSeconds) {
+  const percent = Math.round(fraction * 100);
+  $("progressStage").textContent = `${progressStageLabel} ${percent}%`;
+  $("progressTime").textContent = `${formatTime(elapsedSeconds)} / ${formatTime(progressTotalSeconds)}`;
+  $("progressFill").style.width = `${percent}%`;
+}
+let engineReady = false;
+let currentFile = null;
+let currentInfo = null;
+let outputURL = null;
+let cancelled = false;
+
+function setState(state) { app.dataset.state = state; }
+
+function showError(message) {
+  $("errorMessage").textContent = message;
+  setState("error");
+}
+
+function appendLog(line) {
+  const box = $("logBox");
+  box.textContent += line + "\n";
+  box.scrollTop = box.scrollHeight;
+}
+
+function resetToEmpty() {
+  currentFile = null;
+  currentInfo = null;
+  if (outputURL) { URL.revokeObjectURL(outputURL); outputURL = null; }
+  $("fileInput").value = "";
+  $("logBox").textContent = "";
+  $("logBox").classList.remove("open");
+  $("logToggle").textContent = "顯示詳細記錄";
+  $("previewVideo").hidden = true;
+  $("previewVideo").src = "";
+  $("warnBox").hidden = true;
+  $("sizeWarnBox").hidden = true;
+  $("startBtn").disabled = true;
+  setState("empty");
+}
+
+async function initEngine() {
+  try {
+    engine = new Engine(appendLog, renderProgress);
+    await engine.load();
+    engineReady = true;
+    $("engineStatus").textContent = "處理引擎已就緒";
+  } catch (e) {
+    $("engineStatus").textContent = "處理引擎載入失敗，請重新整理頁面再試";
+    console.error(e);
+  }
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  if (!/^(video|audio)\//.test(file.type) && !/\.(mp4|mov|m4v|webm|mkv|avi|mp3|wav|flac|m4a|aac|ogg)$/i.test(file.name)) {
+    showError("這個檔案看起來不是影片或音訊。請確認檔案格式。");
+    return;
+  }
+  currentFile = file;
+  currentInfo = null;
+  setState("ready");
+  $("startBtn").disabled = true;
+  $("fileName").textContent = file.name;
+  $("fileMeta").textContent = `${(file.size / 1024 / 1024).toFixed(1)} MB · 讀取中…`;
+
+  const sizeWarn = $("sizeWarnBox");
+  if (file.size > 500 * 1024 * 1024) {
+    sizeWarn.hidden = false;
+    sizeWarn.textContent = "這個檔案超過 500 MB。瀏覽器版沒有安裝限制，但影片全部要載入記憶體處理，大檔案可能會很慢或讓分頁當掉。建議先用較短的片段測試，或改用不限制大小的桌面版工具。";
+  } else {
+    sizeWarn.hidden = true;
+  }
+
+  if (!engineReady) {
+    try { await initEngine(); } catch (e) {}
+  }
+  if (!engineReady) {
+    showError("處理引擎尚未就緒，請確認網路連線後重新整理頁面。");
+    return;
+  }
+
+  try {
+    await engine.writeInput(file);
+    currentInfo = await engine.probe();
+    const parts = [];
+    if (currentInfo.hasVideo) parts.push(`${currentInfo.videoCodec.toUpperCase()} ${currentInfo.width}x${currentInfo.height}`);
+    if (currentInfo.hasAudio) parts.push(`${currentInfo.sampleRate}Hz ${currentInfo.channelLayout}`);
+    if (currentInfo.duration) {
+      const m = Math.floor(currentInfo.duration / 60), s = Math.round(currentInfo.duration % 60);
+      parts.push(`${m}:${String(s).padStart(2, "0")}`);
+    }
+    $("fileMeta").textContent = parts.join(" · ") || "已載入";
+
+    if (!currentInfo.hasAudio) {
+      showError("這個檔案沒有偵測到音軌，無法調整音量。");
+      return;
+    }
+    updatePresetHint();
+    $("startBtn").disabled = false;
+  } catch (e) {
+    showError(e.message || "讀取檔案時發生錯誤。");
+  }
+}
+
+function updatePresetHint() {
+  const preset = PRESETS[$("presetSelect").value];
+  $("presetHint").textContent = preset.note;
+}
+
+async function startProcessing() {
+  if (!currentFile || !currentInfo) return;
+  const presetKey = $("presetSelect").value;
+  const preset = PRESETS[presetKey];
+  setState("working");
+  cancelled = false;
+  progressTotalSeconds = currentInfo.duration || 0;
+  progressStageLabel = "分析原始響度";
+  renderProgress(0, 0);
+
+  try {
+    const output = chooseOutput(currentInfo);
+    if (!output) {
+      showError(`目前不支援輸出 ${currentInfo.videoCodec.toUpperCase()} 編碼的影像。\n請改用支援 H.264 / VP9 的影片，或使用進階版（Python 命令列工具）。`);
+      return;
+    }
+
+    const src = await engine.measure(engine.inputName, preset.i, preset.tp, currentInfo.dualMono);
+    if (cancelled) return;
+    if (src.i === null || src.i <= SILENCE_FLOOR) {
+      showError("這個檔案的音訊是(接近)無聲，無法計算需要提升多少音量。");
+      return;
+    }
+
+    const plan = engine.plan(src.i, src.tp, preset.i, preset.tp);
+
+    const result = await engine.renderAndVerify(
+      plan, preset.i, preset.tp, currentInfo.dualMono,
+      output.container, output.audioCodec, output.audioArgs, output.hasVideo,
+      (stage) => { progressStageLabel = stage; }
+    );
+    if (cancelled) return;
+
+    renderProgress(1, progressTotalSeconds);
+    progressStageLabel = "完成";
+
+    const mime = output.container === "wav" ? "audio/wav" : output.container === "webm" ? "video/webm" : "video/mp4";
+    const blob = new Blob([result.data.buffer], { type: mime });
+    outputURL = URL.createObjectURL(blob);
+
+    const dlName = currentFile.name.replace(/\.[^.]+$/, "") + "_loudnorm." + output.container;
+    $("downloadBtn").href = outputURL;
+    $("downloadBtn").download = dlName;
+
+    if (output.hasVideo) {
+      $("previewVideo").src = outputURL;
+      $("previewVideo").hidden = false;
+    } else {
+      $("previewVideo").hidden = true;
+    }
+
+    $("statLufsBefore").textContent = `${src.i.toFixed(1)} LUFS`;
+    $("statLufsAfter").textContent = result.finalStats.i !== null ? `${result.finalStats.i.toFixed(1)} LUFS` : "—";
+    $("statTpBefore").textContent = src.tp !== null ? `${src.tp.toFixed(1)} dBTP` : "—";
+    $("statTpAfter").textContent = result.finalStats.tp !== null ? `${result.finalStats.tp.toFixed(1)} dBTP` : "—";
+
+    const gainDirection = plan.gainDb >= 0 ? "提升" : "降低";
+    let note = `${gainDirection} ${Math.abs(plan.gainDb).toFixed(1)} dB`;
+    note += plan.useLimiter ? "，其中部分經過真實峰值限幅器處理" : "（純增益，不改變音質）";
+    note += output.hasVideo ? "。影像已原封不動保留，未重新編碼。" : "。輸出為無損 WAV。";
+    $("resultNote").textContent = note;
+
+    if (plan.shortfallDb > 0.5) {
+      $("warnBox").hidden = false;
+      $("warnBox").textContent = `這段素材峰值偏高（可能有爆音或碰撞聲），完全達標需要更多限幅，因此成品會比目標小聲約 ${plan.shortfallDb.toFixed(1)} dB，避免聲音被壓得太扁。`;
+    } else {
+      $("warnBox").hidden = true;
+    }
+
+    setState("done");
+  } catch (e) {
+    console.error(e);
+    if (!cancelled) showError(e.message || "處理時發生錯誤，請再試一次。");
+  }
+}
+
+/* ── 事件綁定 ───────────────────── */
+
+$("emptyCard").addEventListener("click", () => $("fileInput").click());
+$("emptyCard").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("fileInput").click(); }
+});
+$("fileInput").addEventListener("change", (e) => handleFile(e.target.files[0]));
+
+["dragenter", "dragover"].forEach((evt) =>
+  $("emptyCard").addEventListener(evt, (e) => { e.preventDefault(); $("emptyCard").classList.add("drag"); })
+);
+["dragleave", "drop"].forEach((evt) =>
+  $("emptyCard").addEventListener(evt, (e) => { e.preventDefault(); $("emptyCard").classList.remove("drag"); })
+);
+$("emptyCard").addEventListener("drop", (e) => handleFile(e.dataTransfer.files[0]));
+
+$("presetSelect").addEventListener("change", updatePresetHint);
+$("chooseAnother").addEventListener("click", resetToEmpty);
+$("startBtn").addEventListener("click", startProcessing);
+$("resetBtn").addEventListener("click", resetToEmpty);
+$("errorResetBtn").addEventListener("click", resetToEmpty);
+$("cancelBtn").addEventListener("click", () => { cancelled = true; resetToEmpty(); });
+$("logToggle").addEventListener("click", () => {
+  const open = $("logBox").classList.toggle("open");
+  $("logToggle").textContent = open ? "隱藏詳細記錄" : "顯示詳細記錄";
+});
+
+/* ── 主題切換 ───────────────────── */
+(function () {
+  const KEY = "loudmaster-theme";
+  const toggle = $("themeToggle");
+  function apply(light) {
+    document.body.classList.toggle("light", light);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", light ? "#FBF7EE" : "#0C0A07");
+  }
+  let saved = null;
   try { saved = localStorage.getItem(KEY); } catch (e) {}
   apply(saved === "light");
-
-  toggle.addEventListener("click", function(){
-    var light = !document.body.classList.contains("light");
+  toggle.addEventListener("click", () => {
+    const light = !document.body.classList.contains("light");
     apply(light);
     try { localStorage.setItem(KEY, light ? "light" : "dark"); } catch (e) {}
   });
 })();
+
+updatePresetHint();
+if (typeof WebAssembly === "undefined") {
+  $("engineStatus").textContent = "此瀏覽器不支援 WebAssembly，無法使用此工具";
+} else {
+  initEngine();
+}
 </script>
 
 </body>
