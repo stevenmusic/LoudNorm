@@ -147,6 +147,15 @@ main{
   display:flex;align-items:center;justify-content:center;gap:6px;
   margin-top:16px;font-size:var(--fs-xs);color:var(--muted);text-align:center;
 }
+.engine-load{margin-top:14px;text-align:center}
+.engine-load-bar{height:3px;border-radius:2px;background:var(--line);overflow:hidden;max-width:220px;margin:0 auto 8px}
+.engine-load-fill{height:100%;background:var(--gold);border-radius:2px;width:0%;transition:width .2s ease}
+.engine-load p{font-size:var(--fs-2xs);color:var(--muted);white-space:pre-line;line-height:1.6}
+.engine-load.hidden{display:none}
+.engine-load .retry-link{
+  color:var(--gold);text-decoration:underline;text-underline-offset:3px;cursor:pointer;
+  background:none;border:none;font:inherit;font-size:inherit;padding:0;
+}
 
 /* ── 就緒 / 完成 卡片 ────────────── */
 .card{
@@ -297,6 +306,10 @@ footer a:hover{color:var(--gold-bright)}
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V6z"/></svg>
         全程在你的瀏覽器裡處理,檔案不會上傳到任何伺服器
       </p>
+      <div class="engine-load" id="engineLoad">
+        <div class="engine-load-bar"><div class="engine-load-fill" id="engineLoadFill"></div></div>
+        <p id="engineLoadText">準備處理引擎中…</p>
+      </div>
       <input type="file" id="fileInput" accept="video/*,audio/*" hidden>
     </div>
 
@@ -399,10 +412,58 @@ footer a:hover{color:var(--gold-bright)}
 </footer>
 
 <script type="module">
-import { FFmpeg } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js";
-import { toBlobURL, fetchFile } from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js";
+// Two mirrors of the same npm packages. jsdelivr first (fastest in most
+// regions), unpkg as a fallback if a CDN hiccups or is blocked on a given
+// network — a bare import statement can't retry, so everything below is
+// loaded dynamically instead.
+const CDN_MIRRORS = [
+  {
+    ffmpeg: "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js",
+    util: "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js",
+    core: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm",
+  },
+  {
+    ffmpeg: "https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js",
+    util: "https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js",
+    core: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm",
+  },
+];
+const LOAD_TIMEOUT_MS = 45000;
 
-const CORE_BASE = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm";
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label}逾時（超過 ${Math.round(ms / 1000)} 秒沒有回應）`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+let FFmpeg, toBlobURL, fetchFile, CORE_BASE;
+let engineLoadErrors = [];
+
+/** 依序試過每個 CDN 鏡像，全部失敗才真的報錯，並保留每次嘗試的原因。 */
+async function loadEngineModules(onProgress) {
+  engineLoadErrors = [];
+  for (let i = 0; i < CDN_MIRRORS.length; i++) {
+    const mirror = CDN_MIRRORS[i];
+    try {
+      onProgress?.(`連線處理引擎（來源 ${i + 1}/${CDN_MIRRORS.length}）…`);
+      const [ffmpegMod, utilMod] = await withTimeout(
+        Promise.all([import(mirror.ffmpeg), import(mirror.util)]),
+        LOAD_TIMEOUT_MS,
+        "載入引擎程式"
+      );
+      FFmpeg = ffmpegMod.FFmpeg;
+      toBlobURL = utilMod.toBlobURL;
+      fetchFile = utilMod.fetchFile;
+      CORE_BASE = mirror.core;
+      return;
+    } catch (e) {
+      engineLoadErrors.push(`來源 ${i + 1}：${e.message || e}`);
+    }
+  }
+  throw new Error("所有來源都連不上處理引擎。\n" + engineLoadErrors.join("\n"));
+}
 
 /* ════════════════════════════════════════════════════════════════
    響度母帶引擎
@@ -470,11 +531,24 @@ class Engine {
     });
   }
 
-  async load() {
-    await this.ffmpeg.load({
-      coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, "text/javascript"),
-      wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, "application/wasm"),
-    });
+  async load(onProgress) {
+    onProgress?.("下載處理引擎程式…", 0);
+    const coreURL = await withTimeout(
+      toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, "text/javascript"),
+      LOAD_TIMEOUT_MS, "下載引擎程式"
+    );
+    // The wasm binary is ~31MB — on a slow connection this is the step that
+    // takes real time, so it gets its own progress readout rather than
+    // leaving the user staring at an unchanged screen.
+    const wasmURL = await withTimeout(
+      toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, "application/wasm", true,
+        ({ received, total }) => {
+          if (total > 0) onProgress?.("下載處理引擎…", received / total);
+        }),
+      LOAD_TIMEOUT_MS, "下載引擎核心"
+    );
+    onProgress?.("啟動處理引擎…", 1);
+    await withTimeout(this.ffmpeg.load({ coreURL, wasmURL }), LOAD_TIMEOUT_MS, "啟動引擎");
   }
 
   async writeInput(file) {
@@ -674,16 +748,35 @@ function resetToEmpty() {
   setState("empty");
 }
 
-async function initEngine() {
-  try {
+let engineLoadPromise = null;
+
+function setEngineLoadUI(text, fraction) {
+  $("engineLoadText").textContent = text;
+  if (fraction != null) $("engineLoadFill").style.width = `${Math.round(fraction * 100)}%`;
+  $("engineStatus").textContent = text;
+}
+
+/** Loads the engine exactly once; concurrent callers share the same attempt. */
+function ensureEngine() {
+  if (engineLoadPromise) return engineLoadPromise;
+  engineLoadPromise = (async () => {
+    await loadEngineModules((text) => setEngineLoadUI(text, 0));
     engine = new Engine(appendLog, renderProgress);
-    await engine.load();
+    await engine.load((text, fraction) => setEngineLoadUI(text, fraction));
     engineReady = true;
-    $("engineStatus").textContent = "處理引擎已就緒";
-  } catch (e) {
-    $("engineStatus").textContent = "處理引擎載入失敗，請重新整理頁面再試";
-    console.error(e);
-  }
+    $("engineLoad").classList.add("hidden");
+    setEngineLoadUI("處理引擎已就緒", 1);
+  })().catch((e) => {
+    engineLoadPromise = null; // let a retry try again from scratch
+    engineReady = false;
+    throw e;
+  });
+  return engineLoadPromise;
+}
+
+function describeEngineError(e) {
+  const reason = e?.message || String(e);
+  return `處理引擎載入失敗，可能是網路不穩定或連不到 CDN。\n\n詳細原因：\n${reason}\n\n可以檢查網路連線後再試一次。`;
 }
 
 async function handleFile(file) {
@@ -702,17 +795,16 @@ async function handleFile(file) {
   const sizeWarn = $("sizeWarnBox");
   if (file.size > 500 * 1024 * 1024) {
     sizeWarn.hidden = false;
-    sizeWarn.textContent = "這個檔案超過 500 MB。瀏覽器版沒有安裝限制，但影片全部要載入記憶體處理，大檔案可能會很慢或讓分頁當掉。建議先用較短的片段測試，或改用不限制大小的桌面版工具。";
+    sizeWarn.textContent = "這個檔案超過 500 MB。瀏覽器版沒有安裝限制，但影片全部要載入記憶體處理，大檔案可能會很慢或讓分頁當掉。建議先用較短的片段測試。";
   } else {
     sizeWarn.hidden = true;
   }
 
   if (!engineReady) {
-    try { await initEngine(); } catch (e) {}
-  }
-  if (!engineReady) {
-    showError("處理引擎尚未就緒，請確認網路連線後重新整理頁面。");
-    return;
+    try { await ensureEngine(); } catch (e) {
+      showError(describeEngineError(e));
+      return;
+    }
   }
 
   try {
@@ -840,7 +932,20 @@ $("chooseAnother").addEventListener("click", resetToEmpty);
 $("startBtn").addEventListener("click", startProcessing);
 $("resetBtn").addEventListener("click", resetToEmpty);
 $("errorResetBtn").addEventListener("click", resetToEmpty);
-$("cancelBtn").addEventListener("click", () => { cancelled = true; resetToEmpty(); });
+$("cancelBtn").addEventListener("click", () => {
+  cancelled = true;
+  // .exec() has no abort signal of its own — terminate() is the only way to
+  // actually stop the running computation, not just walk away from it while
+  // it keeps burning CPU in the background worker.
+  if (engine) { try { engine.ffmpeg.terminate(); } catch (e) {} }
+  engine = null;
+  engineReady = false;
+  engineLoadPromise = null;
+  resetToEmpty();
+  $("engineLoad").classList.remove("hidden");
+  $("engineLoadFill").style.width = "0%";
+  ensureEngine().catch((e) => console.error(e));
+});
 $("logToggle").addEventListener("click", () => {
   const open = $("logBox").classList.toggle("open");
   $("logToggle").textContent = open ? "隱藏詳細記錄" : "顯示詳細記錄";
@@ -867,9 +972,25 @@ $("logToggle").addEventListener("click", () => {
 
 updatePresetHint();
 if (typeof WebAssembly === "undefined") {
-  $("engineStatus").textContent = "此瀏覽器不支援 WebAssembly，無法使用此工具";
+  $("engineLoadText").textContent = "此瀏覽器不支援 WebAssembly，無法使用此工具";
+  $("engineStatus").textContent = "此瀏覽器不支援 WebAssembly";
 } else {
-  initEngine();
+  // Warm up in the background so it is usually ready by the time a file is
+  // picked; handleFile() awaits the same promise if the user is faster.
+  ensureEngine().catch((e) => {
+    $("engineLoadText").innerHTML = "";
+    const text = document.createElement("span");
+    text.textContent = "處理引擎載入失敗。";
+    const retry = document.createElement("button");
+    retry.className = "retry-link";
+    retry.textContent = "重試";
+    retry.addEventListener("click", () => {
+      $("engineLoadFill").style.width = "0%";
+      ensureEngine().catch(() => {});
+    });
+    $("engineLoadText").append(text, "　", retry);
+    console.error(e);
+  });
 }
 </script>
 
