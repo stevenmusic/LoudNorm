@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<!-- 內容型頁面不鎖縮放:這頁是拿來「讀」的,關掉雙指放大會讓小字使用者沒有退路。
+     ScrollScore 是操作型 App 才需要 user-scalable=no,這裡刻意不沿用那一項。 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- 手機瀏覽器的網址列會吃這個顏色。切換淺色主題時 applyTheme() 會一起改,
+     不然頁面變白了、上面那條還是黑的,看起來像沒對齊 -->
+<meta name="theme-color" content="#0C0A07">
+<title>LoudMaster — 影片響度母帶處理</title>
+<meta name="description" content="把影片音量提升到 YouTube 標準響度(-14 LUFS / -1 dBTP),不破音、不改變畫質、盡可能不改變音質。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0C0A07;
+  --panel:#161209;
+  --panel-2:#201A0F;
+  --gold:#C9A24B;
+  --gold-bright:#EFD48A;
+  --ivory:#F4ECDA;
+  --muted:#8A7D5F;
+  --muted-bright:#B6A576;
+  --line:#2A2415;
+  --shadow-sm:0 4px 14px rgba(0,0,0,.35);
+  --shadow-md:0 10px 26px rgba(0,0,0,.5);
+  --radius-sm:8px;
+  --radius-md:14px;
+  --radius-lg:18px;
+  --radius-pill:999px;
+  --fs-2xs:11px;
+  --fs-xs:12px;
+  --fs-sm:13px;
+  --fs-md:14px;
+  --fs-lg:16px;
+  --fs-xl:19px;
+  --fs-2xl:26px;
+  --surface-glass:rgba(32,26,15,.88);
+  --surface-inset:rgba(22,18,9,.55);
+  --surface-inset-hi:rgba(22,18,9,.75);
+  --card-tint:rgba(255,255,255,.035);
+  --code-bg:#0A0805;
+  --ok:#7FB069;
+  color-scheme:dark;
+}
+
+/* ══ 淺色主題 ══════════════════════════════════════════════════
+   同一組語意變數換一套值,版面與元件完全不用改寫。
+   金色在淺底上必須壓深才看得清楚,這裡沿用 ScrollScore 實測過
+   通過 WCAG AA 的那一組值。 */
+body.light{
+  --bg:#FBF7EE;
+  --panel:#F4EEE0;
+  --panel-2:#EDE6D4;
+  --gold:#856418;
+  --gold-bright:#6B5115;
+  --ivory:#241E12;        /* 淺色版的「主文字色」,名字沿用但實際是深色 */
+  --muted:#6F6450;
+  --muted-bright:#544B3B;
+  --line:#D8CDB2;
+  --shadow-sm:0 4px 14px rgba(90,72,30,.10);
+  --shadow-md:0 10px 26px rgba(90,72,30,.14);
+  --surface-glass:rgba(252,249,241,.92);
+  --surface-inset:rgba(255,255,255,.7);
+  --surface-inset-hi:rgba(255,255,255,.95);
+  --card-tint:rgba(133,100,24,.05);
+  --code-bg:#F2EADA;
+  --ok:#3F7D3F;
+  color-scheme:light;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);color:var(--ivory);
+  font-family:"Noto Sans TC",sans-serif;
+  font-size:var(--fs-md);line-height:1.8;
+  -webkit-font-smoothing:antialiased;
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+/* ── 頂欄 ───────────────────────── */
+header{
+  position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;gap:8px 14px;justify-content:space-between;
+  padding:10px 14px;border-bottom:1px solid var(--line);
+  background:var(--surface-glass);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+}
+header h1{
+  font-family:"Noto Serif TC",serif;
+  font-size:clamp(14px, 4.2vw, var(--fs-xl));
+  letter-spacing:clamp(.02em, .5vw, .1em);
+  font-weight:700;color:var(--gold);white-space:nowrap;
+}
+header h1 span{color:var(--ivory);font-weight:600}
+.header-right{display:flex;align-items:center;gap:8px}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;line-height:1;
+  border:1px solid var(--gold);background:transparent;color:var(--gold);
+  font-family:inherit;font-size:var(--fs-md);font-weight:500;
+  padding:8px 16px;height:38px;border-radius:var(--radius-pill);cursor:pointer;
+  transition:background .2s,color .2s;
+  white-space:nowrap;text-decoration:none;
+}
+.btn:hover,.btn:focus-visible{background:var(--gold);color:var(--bg);outline:none}
+.btn.primary{background:var(--gold);color:var(--bg);font-weight:700}
+.btn.primary:hover,.btn.primary:focus-visible{background:var(--gold-bright)}
+.btn.icon{width:38px;padding:0;font-size:var(--fs-lg)}
+
+/* ── 版心 ───────────────────────── */
+.wrap{max-width:900px;margin:0 auto;padding:0 18px}
+section{padding:52px 0;border-top:1px solid var(--line)}
+
+h2{
+  font-family:"Noto Serif TC",serif;
+  font-size:var(--fs-2xl);line-height:1.4;color:var(--gold);
+  letter-spacing:.06em;margin-bottom:8px;font-weight:700;
+}
+.sub{color:var(--muted);font-size:var(--fs-sm);margin-bottom:26px}
+p{color:var(--muted-bright)}
+strong{color:var(--ivory);font-weight:700}
+a{color:var(--gold);text-underline-offset:3px}
+a:hover{color:var(--gold-bright)}
+
+/* ── Hero ───────────────────────── */
+.hero{padding:56px 0 44px;text-align:center}
+.hero .kicker{
+  font-size:var(--fs-xs);letter-spacing:.22em;color:var(--muted);
+  text-transform:uppercase;margin-bottom:16px;
+}
+.hero h2{
+  font-size:clamp(27px, 7.2vw, 42px);color:var(--ivory);
+  letter-spacing:.02em;margin-bottom:14px;
+}
+.hero h2 em{font-style:normal;color:var(--gold)}
+.hero .lead{max-width:520px;margin:0 auto;font-size:var(--fs-lg);color:var(--muted-bright)}
+.hero-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:28px 0 34px}
+
+/* ── 終端機示範 ─────────────────────
+   overflow-x:auto 是關鍵:中文頁面裡的指令列一定會比手機螢幕寬,
+   沒有這一行,右邊的內容會直接被裁掉而且救不回來。 */
+pre{
+  background:var(--code-bg);border:1px solid var(--line);border-radius:var(--radius-md);
+  padding:16px 18px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  text-align:left;box-shadow:var(--shadow-sm);
+}
+pre code{
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Noto Sans Mono",monospace;
+  font-size:var(--fs-sm);line-height:1.7;color:var(--ivory);
+  white-space:pre;display:block;
+}
+code{
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Noto Sans Mono",monospace;
+  font-size:.92em;background:var(--card-tint);color:var(--gold-bright);
+  padding:2px 6px;border-radius:var(--radius-sm);
+}
+pre code .c{color:var(--muted)}
+pre code .g{color:var(--gold)}
+pre code .ok{color:var(--ok)}
+.hint{font-size:var(--fs-xs);color:var(--muted);text-align:center;margin-top:10px}
+
+/* ── 原則橫幅 ───────────────────── */
+.principle{
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:var(--panel);padding:26px 0;text-align:center;
+}
+.principle .big{
+  font-family:"Noto Serif TC",serif;font-size:clamp(17px,4.4vw,23px);
+  color:var(--gold-bright);line-height:1.6;margin-bottom:6px;
+}
+.principle small{color:var(--muted);font-size:var(--fs-sm)}
+
+/* ── 數據條 ─────────────────────── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center}
+.stat{
+  background:var(--surface-inset);border:1px solid var(--line);
+  border-radius:var(--radius-lg);padding:20px 10px;
+}
+.stat b{
+  display:block;font-family:"Noto Serif TC",serif;
+  font-size:clamp(17px,4.2vw,25px);color:var(--gold-bright);
+  font-variant-numeric:tabular-nums;line-height:1.3;
+}
+.stat span{display:block;font-size:var(--fs-xs);color:var(--muted);margin-top:6px}
+@media (max-width:620px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+/* ── 卡片 ───────────────────────── */
+.cards{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.card{
+  background:var(--surface-inset);border:1px solid var(--line);
+  border-radius:var(--radius-lg);padding:22px;
+  transition:border-color .15s,background-color .15s;
+}
+.card:hover{background:var(--surface-inset-hi);border-color:var(--gold)}
+.card .mark{
+  display:flex;align-items:center;justify-content:center;
+  width:42px;height:42px;border-radius:50%;
+  background:var(--card-tint);color:var(--gold);margin-bottom:12px;
+}
+.card h3{
+  font-family:"Noto Serif TC",serif;font-size:var(--fs-lg);
+  color:var(--ivory);font-weight:600;margin-bottom:6px;
+}
+.card p{font-size:var(--fs-sm);line-height:1.75;color:var(--muted)}
+
+/* ── 三步驟 ─────────────────────── */
+.steps{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));counter-reset:step;list-style:none}
+.steps li{counter-increment:step;padding-left:44px;position:relative;color:var(--muted);font-size:var(--fs-sm);line-height:1.75}
+.steps li::before{
+  content:counter(step);position:absolute;left:0;top:0;
+  width:30px;height:30px;border-radius:50%;
+  background:var(--card-tint);border:1px solid var(--gold);color:var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  font-size:var(--fs-sm);font-weight:700;font-variant-numeric:tabular-nums;
+}
+.steps li b{display:block;color:var(--ivory);font-size:var(--fs-md);font-weight:600;margin-bottom:2px}
+
+/* ── 快速開始 ───────────────────── */
+.start{display:grid;gap:18px;grid-template-columns:1fr 1fr}
+@media (max-width:680px){.start{grid-template-columns:1fr}}
+.start h3{
+  font-family:"Noto Serif TC",serif;font-size:var(--fs-lg);color:var(--ivory);
+  font-weight:600;margin-bottom:8px;
+}
+.start pre{margin-bottom:0}
+.start p{font-size:var(--fs-sm);color:var(--muted);margin-top:8px}
+.more{
+  margin-top:26px;padding-top:20px;border-top:1px dashed var(--line);
+  font-size:var(--fs-sm);color:var(--muted);text-align:center;
+}
+
+/* ── 頁尾 ───────────────────────── */
+footer{
+  border-top:1px solid var(--line);background:var(--panel);
+  padding:26px 18px calc(26px + env(safe-area-inset-bottom));
+  text-align:center;font-size:var(--fs-xs);color:var(--muted);
+}
+footer .brand{
+  font-family:"Noto Serif TC",serif;color:var(--gold);
+  letter-spacing:.1em;font-size:var(--fs-sm);margin-bottom:6px;
+}
+footer a{margin:0 8px;white-space:nowrap}
+
+@media (max-width:600px){
+  section{padding:40px 0}
+  .wrap{padding:0 15px}
+  .hero{padding:40px 0 34px}
+  pre{padding:14px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Loud<span>Master</span></h1>
+  <div class="header-right">
+    <button class="btn icon" id="themeToggle" title="切換淺色 / 深色" aria-label="切換淺色或深色主題">◐</button>
+    <a class="btn" href="https://github.com/stevenmusic/LoudNorm">GitHub</a>
+  </div>
+</header>
+
+<div class="hero wrap">
+  <p class="kicker">EBU R128 · ITU-R BS.1770</p>
+  <h2>把影片音量調到<em>剛剛好</em></h2>
+  <p class="lead">自動提升到 YouTube 標準響度。不破音、不改變畫質，輸出可以直接上傳的成品。</p>
+  <div class="hero-actions">
+    <a class="btn primary" href="#start">開始使用</a>
+    <a class="btn" href="https://github.com/stevenmusic/LoudNorm#readme">完整說明</a>
+  </div>
+
+<pre><code><span class="c">$</span> <span class="g">./loudnorm 我的影片.mp4</span>
+
+<span class="ok">✓</span> 完成：我的影片_loudnorm.mp4
+   目標   -14.00 LUFS    -1.00 dBTP   （YouTube）
+   原始   -28.43 LUFS   -12.10 dBTP
+   成品   -14.02 LUFS    -1.20 dBTP
+   處理  提升 14.41 dB（純增益，不改變音質）
+   影像  h264 1920x1080 原封不動複製（未重新編碼）</code></pre>
+  <p class="hint">左右滑動可看完整輸出</p>
+</div>
+
+<div class="principle">
+  <div class="wrap">
+    <p class="big">能用純增益解決的，就絕不做動態處理。</p>
+    <small>只有峰值真的不夠用時才啟用真實峰值限幅器，而且只用在差的那幾 dB。</small>
+  </div>
+</div>
+
+<section class="wrap" style="border-top:none">
+  <h2>實測數據</h2>
+  <p class="sub">不是設計目標，是開發時實際跑出來的數字。</p>
+  <div class="stats">
+    <div class="stat"><b>-14.0</b><span>LUFS 達標<br>誤差 &lt; 0.05 dB</span></div>
+    <div class="stat"><b>-1.2</b><span>dBTP 峰值<br>穩守上限內</span></div>
+    <div class="stat"><b>0.000</b><span>ms 影音位移<br>限幅已補償</span></div>
+    <div class="stat"><b>MD5</b><span>影像串流<br>位元完全相同</span></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>三個「不改變」</h2>
+  <p class="sub">每一項都可以自己驗證。</p>
+  <div class="cards">
+    <div class="card">
+      <div class="mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m10 9 5 3-5 3z" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <h3>畫質完全不變</h3>
+      <p>影像軌直接複製，從頭到尾沒有解碼、沒有重新編碼。來源與成品的影像串流 MD5 完全相同。</p>
+    </div>
+    <div class="card">
+      <div class="mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h3l3-8 4 16 3-8h5"/></svg>
+      </div>
+      <h3>不做動態處理</h3>
+      <p>全程 64-bit 浮點。輸出 <code>.mkv</code>／<code>.mov</code> 時音訊存成無損，等於原始訊號乘上一個固定增益。</p>
+    </div>
+    <div class="card">
+      <div class="mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
+      </div>
+      <h3>不破音</h3>
+      <p>峰值以 4 倍超取樣的真實峰值為準，而不是取樣點峰值。成品會再量一次確認沒有超標。</p>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>怎麼運作</h2>
+  <p class="sub">跟母帶工程師一樣的流程。</p>
+  <ol class="steps">
+    <li><b>量測</b>依 EBU R128 量測整支片的響度與真實峰值。有加配樂就量混完之後的結果。</li>
+    <li><b>決定</b>算出需要幾 dB。峰值餘裕夠就純增益結束；不夠才動用限幅，並回頭試算修正。</li>
+    <li><b>輸出並驗收</b>一次編碼完成，影像直接複製。最後重新量測成品，把實際數字報給你。</li>
+  </ol>
+</section>
+
+<section class="wrap" id="start">
+  <h2>開始使用</h2>
+  <p class="sub">只需要 ffmpeg 和 Python，不必安裝任何 Python 套件。</p>
+  <div class="start">
+    <div>
+      <h3>1. 安裝 ffmpeg</h3>
+<pre><code><span class="c"># macOS</span>
+<span class="g">brew install ffmpeg</span>
+
+<span class="c"># Windows</span>
+<span class="g">winget install Gyan.FFmpeg</span>
+
+<span class="c"># Ubuntu / Debian</span>
+<span class="g">sudo apt install ffmpeg</span></code></pre>
+    </div>
+    <div>
+      <h3>2. 執行</h3>
+<pre><code><span class="c"># 圖形介面（或雙擊 launcher）</span>
+<span class="g">python3 -m loudmaster --gui</span>
+
+<span class="c"># 指令列</span>
+<span class="g">./loudnorm 影片.mp4</span>
+
+<span class="c"># 輸出無損音訊</span>
+<span class="g">./loudnorm 影片.mp4 -o 成品.mkv</span></code></pre>
+    </div>
+  </div>
+  <p class="more">
+    支援 YouTube／Spotify／Apple／TikTok／EBU R128 等 8 種平台預設，也可自訂目標。<br>
+    批次處理、匯入配樂、自動避讓、無損輸出等完整選項請見
+    <a href="https://github.com/stevenmusic/LoudNorm#readme">說明文件</a>。
+  </p>
+</section>
+
+<footer>
+  <div class="brand">LoudMaster</div>
+  <div>影片響度母帶處理 · 以 EBU R128 為準</div>
+  <div style="margin-top:10px">
+    <a href="https://github.com/stevenmusic/LoudNorm">原始碼</a>·<a href="https://github.com/stevenmusic/LoudNorm#readme">說明文件</a>·<a href="https://github.com/stevenmusic/LoudNorm/issues">回報問題</a>
+  </div>
+</footer>
+
+<script>
+/* 主題切換:預設深色(跟 ScrollScore 一致),使用者選過就記住。
+   localStorage 在部分隱私模式下會丟例外,失敗就當作沒存過,不影響頁面其他部分。 */
+(function(){
+  var KEY = "loudmaster-theme";
+  var toggle = document.getElementById("themeToggle");
+
+  function apply(light){
+    document.body.classList.toggle("light", light);
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", light ? "#FBF7EE" : "#0C0A07");
+    toggle.setAttribute("aria-pressed", light ? "true" : "false");
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch (e) {}
+  apply(saved === "light");
+
+  toggle.addEventListener("click", function(){
+    var light = !document.body.classList.contains("light");
+    apply(light);
+    try { localStorage.setItem(KEY, light ? "light" : "dark"); } catch (e) {}
+  });
+})();
+</script>
+
+</body>
+</html>
