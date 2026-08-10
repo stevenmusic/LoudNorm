@@ -393,7 +393,7 @@ footer a:hover{color:var(--gold-bright)}
         <p class="result-note" id="resultNote"></p>
         <div class="actions">
           <button class="btn ghost" id="resetBtn">處理另一個</button>
-          <a class="btn primary" id="downloadBtn" download>下載成品</a>
+          <button class="btn primary" id="downloadBtn">下載成品</button>
         </div>
       </div>
     </div>
@@ -779,6 +779,8 @@ let engineReady = false;
 let currentFile = null;
 let currentInfo = null;
 let outputURL = null;
+let outputBlob = null;
+let outputFileName = "";
 let cancelled = false;
 
 function setState(state) { app.dataset.state = state; }
@@ -798,6 +800,8 @@ function resetToEmpty() {
   currentFile = null;
   currentInfo = null;
   if (outputURL) { URL.revokeObjectURL(outputURL); outputURL = null; }
+  outputBlob = null;
+  outputFileName = "";
   $("fileInput").value = "";
   $("logBox").textContent = "";
   $("logBox").classList.remove("open");
@@ -937,12 +941,14 @@ async function startProcessing() {
     progressStageLabel = "完成";
 
     const mime = output.container === "wav" ? "audio/wav" : output.container === "webm" ? "video/webm" : "video/mp4";
-    const blob = new Blob([result.data.buffer], { type: mime });
+    // Pass the Uint8Array itself, not .buffer — a typed array's buffer can be
+    // larger than the array's own view (over-allocated by whatever produced
+    // it), and Blob([arraybuffer]) would then include that extra tail.
+    // Blob([typedarray]) only ever reads the array's own byteOffset..length.
+    const blob = new Blob([result.data], { type: mime });
     outputURL = URL.createObjectURL(blob);
-
-    const dlName = currentFile.name.replace(/\.[^.]+$/, "") + "_loudnorm." + output.container;
-    $("downloadBtn").href = outputURL;
-    $("downloadBtn").download = dlName;
+    outputBlob = blob;
+    outputFileName = currentFile.name.replace(/\.[^.]+$/, "") + "_loudnorm." + output.container;
 
     if (output.hasVideo) {
       $("previewVideo").src = outputURL;
@@ -995,6 +1001,38 @@ $("emptyCard").addEventListener("drop", (e) => handleFile(e.dataTransfer.files[0
 $("presetSelect").addEventListener("change", updatePresetHint);
 $("chooseAnother").addEventListener("click", resetToEmpty);
 $("startBtn").addEventListener("click", startProcessing);
+/**
+ * iOS Safari does not reliably support `<a href="blob:..." download>` —
+ * tapping it can make Safari try to navigate to the blob URL as if it were
+ * a page instead of saving it, which fails with "WebKitBlobResource error 1"
+ * for content it doesn't know how to display (exactly what was reported).
+ * Where the Web Share API can share a File, that's the reliable path on iOS
+ * (native share sheet → Save Video / Save to Files). Everywhere else, the
+ * classic temporary-anchor blob download still works fine.
+ */
+async function downloadOutput() {
+  if (!outputBlob) return;
+  const file = new File([outputBlob], outputFileName, { type: outputBlob.type });
+
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file] });
+      return;
+    } catch (e) {
+      if (e.name === "AbortError") return; // user cancelled the share sheet
+      // Fall through to the anchor-download path below on any other failure.
+    }
+  }
+
+  const a = document.createElement("a");
+  a.href = outputURL;
+  a.download = outputFileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+$("downloadBtn").addEventListener("click", downloadOutput);
 $("resetBtn").addEventListener("click", resetToEmpty);
 $("errorResetBtn").addEventListener("click", resetToEmpty);
 $("cancelBtn").addEventListener("click", () => {
