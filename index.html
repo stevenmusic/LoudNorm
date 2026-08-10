@@ -128,8 +128,9 @@ main{
 
 /* ── 空狀態:載入卡 ───────────────── */
 .empty-card{
-  display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;
-  padding:48px 32px;background:var(--surface-inset);border:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;
+  max-width:360px;margin:0 auto;padding:30px 32px;
+  background:var(--surface-inset);border:1px solid var(--line);
   border-radius:var(--radius-lg);cursor:pointer;
   transition:background-color .15s,border-color .15s;
 }
@@ -155,6 +156,11 @@ main{
 .engine-load .retry-link{
   color:var(--gold);text-decoration:underline;text-underline-offset:3px;cursor:pointer;
   background:none;border:none;font:inherit;font-size:inherit;padding:0;
+}
+.engine-load-reason{
+  margin-top:8px;padding:8px 10px;background:var(--card-tint);border-radius:var(--radius-sm);
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10px;color:var(--muted);
+  text-align:left;word-break:break-word;max-width:320px;margin-left:auto;margin-right:auto;
 }
 
 /* ── 就緒 / 完成 卡片 ────────────── */
@@ -778,9 +784,12 @@ function ensureEngine() {
   return engineLoadPromise;
 }
 
+function engineErrorReason(e) {
+  return e?.message || String(e);
+}
+
 function describeEngineError(e) {
-  const reason = e?.message || String(e);
-  return `處理引擎載入失敗，可能是網路不穩定或連不到 CDN。\n\n詳細原因：\n${reason}\n\n可以檢查網路連線後再試一次。`;
+  return `處理引擎載入失敗。\n\n詳細原因：\n${engineErrorReason(e)}\n\n可以檢查網路連線，或把這段文字截圖回報。`;
 }
 
 async function handleFile(file) {
@@ -983,8 +992,8 @@ if (typeof WebAssembly === "undefined") {
   // picked; handleFile() awaits the same promise if the user is faster.
   ensureEngine().catch((e) => {
     $("engineLoadText").innerHTML = "";
-    const text = document.createElement("span");
-    text.textContent = "處理引擎載入失敗。";
+    const summary = document.createElement("span");
+    summary.textContent = "處理引擎載入失敗。";
     const retry = document.createElement("button");
     retry.className = "retry-link";
     retry.textContent = "重試";
@@ -992,7 +1001,12 @@ if (typeof WebAssembly === "undefined") {
       $("engineLoadFill").style.width = "0%";
       ensureEngine().catch(() => {});
     });
-    $("engineLoadText").append(text, "　", retry);
+    // The reason goes on screen, not just in the console — the console isn't
+    // reachable on a phone, and without it this is a dead end to diagnose.
+    const reason = document.createElement("div");
+    reason.className = "engine-load-reason";
+    reason.textContent = engineErrorReason(e);
+    $("engineLoadText").append(summary, "　", retry, reason);
     console.error(e);
   });
 }
