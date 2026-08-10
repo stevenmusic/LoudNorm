@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#0C0A07">
 <title>說明 — LoudMaster</title>
 <meta name="description" content="LoudMaster 怎麼運作、平台目標列表、常見問題。">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CjxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgcng9IjciIGZpbGw9IiMwQzBBMDciLz4KPHJlY3QgeD0iNyIgeT0iMTMiIHdpZHRoPSI0IiBoZWlnaHQ9IjEyIiByeD0iMS41IiBmaWxsPSIjQzlBMjRCIi8+CjxyZWN0IHg9IjE0IiB5PSI3IiB3aWR0aD0iNCIgaGVpZ2h0PSIxOCIgcng9IjEuNSIgZmlsbD0iI0M5QTI0QiIvPgo8cmVjdCB4PSIyMSIgeT0iMTAiIHdpZHRoPSI0IiBoZWlnaHQ9IjE1IiByeD0iMS41IiBmaWxsPSIjQzlBMjRCIi8+Cjwvc3ZnPgo=">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -190,9 +191,11 @@ ffmpeg -i 成品.mp4 -map 0:v -c copy -f md5 -</code></pre>
     <tr><td>TikTok / Instagram / Reels</td><td><span class="num">-14 LUFS / -1 dBTP</span></td></tr>
     <tr><td>Apple Music / Podcasts</td><td><span class="num">-16 LUFS / -1 dBTP</span></td></tr>
     <tr><td>廣播電視 EBU R128</td><td><span class="num">-23 LUFS / -1 dBTP</span></td></tr>
+    <tr><td>自訂目標</td><td>自行輸入 LUFS（-70 ～ -5）與真實峰值上限</td></tr>
   </tbody>
 </table>
 </div>
+<p>如果平台不在清單上，或有特定交件規範，選「自訂目標…」自己輸入數字即可，運作方式完全相同。</p>
 </section>
 
 <section>
@@ -213,8 +216,32 @@ ffmpeg -i 成品.mp4 -map 0:v -c copy -f md5 -</code></pre>
 
 <details>
   <summary>純音訊檔案為什麼輸出的是 WAV？</summary>
-  <p>WAV 是無損格式，瀏覽器版對音訊檔一律輸出無損 WAV，確保「不改變音質」這個承諾百分之百成立。
-  如果需要輸出 MP3 等其他格式，未來可能會加入這個選項。</p>
+  <p>WAV 是無損格式，瀏覽器版對音訊檔一律輸出 24-bit 無損 WAV（並套用三角形高通 dither，
+  避免降低位元深度時產生的量化雜訊），確保「不改變音質」這個承諾百分之百成立。</p>
+</details>
+
+<details>
+  <summary>可以自己輸入目標響度嗎？</summary>
+  <p>可以。平台選單選「自訂目標…」，就能自行輸入整合響度（LUFS）與真實峰值上限（dBTP），
+  運作方式和選預設平台完全相同，一樣是先量測、算出增益，不夠才動用限幅。</p>
+</details>
+
+<details>
+  <summary>5.1 環繞聲道的影片也能處理嗎？</summary>
+  <p>可以。量測時會依 ITU-R BS.1770 對環繞聲道正確加權（不是只看前左右兩聲道），
+  聲道數與空間定位也會完整保留，處理前後只有整體音量不同。</p>
+</details>
+
+<details>
+  <summary>可以匯出處理紀錄嗎？</summary>
+  <p>處理完成後可以下載一份 JSON 格式的響度報告，記錄處理前後的 LUFS／真實峰值、使用的目標、
+  是否動用限幅等資訊，方便存檔或交給後製團隊核對。</p>
+</details>
+
+<details>
+  <summary>怎麼知道素材裡響度有沒有忽大忽小？</summary>
+  <p>完成畫面可以展開「顯示響度曲線」，看整段素材處理前後的響度隨時間變化，
+  方便確認有沒有某幾段特別大聲或特別小聲。</p>
 </details>
 
 <details>

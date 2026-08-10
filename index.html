@@ -8,6 +8,15 @@
 <meta name="theme-color" content="#0C0A07">
 <title>LoudMaster — 影片音量一鍵調到 YouTube 標準</title>
 <meta name="description" content="直接在瀏覽器裡把影片或音樂調到 YouTube 標準響度,不破音、不改變畫質。不用安裝任何東西,檔案也不會上傳到伺服器。">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CjxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgcng9IjciIGZpbGw9IiMwQzBBMDciLz4KPHJlY3QgeD0iNyIgeT0iMTMiIHdpZHRoPSI0IiBoZWlnaHQ9IjEyIiByeD0iMS41IiBmaWxsPSIjQzlBMjRCIi8+CjxyZWN0IHg9IjE0IiB5PSI3IiB3aWR0aD0iNCIgaGVpZ2h0PSIxOCIgcng9IjEuNSIgZmlsbD0iI0M5QTI0QiIvPgo8cmVjdCB4PSIyMSIgeT0iMTAiIHdpZHRoPSI0IiBoZWlnaHQ9IjE1IiByeD0iMS41IiBmaWxsPSIjQzlBMjRCIi8+Cjwvc3ZnPgo=">
+<meta property="og:type" content="website">
+<meta property="og:title" content="LoudMaster — 影片音量一鍵調到 YouTube 標準">
+<meta property="og:description" content="直接在瀏覽器裡把影片或音樂調到 YouTube 標準響度,不破音、不改變畫質。不用安裝任何東西,檔案也不會上傳到伺服器。">
+<meta property="og:url" content="https://stevenmusic.github.io/LoudNorm/">
+<meta property="og:locale" content="zh_TW">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="LoudMaster — 影片音量一鍵調到 YouTube 標準">
+<meta name="twitter:description" content="直接在瀏覽器裡把影片或音樂調到 YouTube 標準響度,不破音、不改變畫質。不用安裝任何東西,檔案也不會上傳到伺服器。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -357,8 +366,8 @@ footer a:hover{color:var(--gold-bright)}
         全程在你的瀏覽器裡處理,檔案不會上傳到任何伺服器
       </p>
       <div class="engine-load" id="engineLoad">
-        <div class="engine-load-bar"><div class="engine-load-fill" id="engineLoadFill"></div></div>
-        <p id="engineLoadText">準備處理引擎中…</p>
+        <div class="engine-load-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="處理引擎下載進度"><div class="engine-load-fill" id="engineLoadFill"></div></div>
+        <p id="engineLoadText" aria-live="polite">準備處理引擎中…</p>
       </div>
       <input type="file" id="fileInput" accept="video/*,audio/*" hidden>
     </div>
@@ -413,9 +422,9 @@ footer a:hover{color:var(--gold-bright)}
     <!-- 處理中 -->
     <div class="panel panel-working">
       <div class="card">
-        <p class="working-title" id="progressStage">準備中 0%</p>
+        <p class="working-title" id="progressStage" aria-live="polite">準備中 0%</p>
         <p class="working-time" id="progressTime">0:00 / 0:00</p>
-        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="progressStage"><div class="progress-fill" id="progressFill"></div></div>
         <div class="working-warn">
           <div class="t">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
@@ -452,6 +461,7 @@ footer a:hover{color:var(--gold-bright)}
           <button class="btn ghost" id="resetBtn">處理另一個</button>
           <button class="btn primary" id="downloadBtn">下載成品</button>
         </div>
+        <button class="report-link" id="reprocessBtn">換個目標重新處理這個檔案</button>
         <button class="report-link" id="chartToggle" hidden>顯示響度曲線</button>
         <div class="loudness-chart" id="loudnessChart" hidden>
           <div class="loudness-chart-head">
@@ -946,6 +956,7 @@ function renderProgress(fraction, elapsedSeconds) {
   $("progressStage").textContent = `${progressStageLabel} ${percent}%`;
   $("progressTime").textContent = `${formatTime(elapsedSeconds)} / ${formatTime(progressTotalSeconds)}`;
   $("progressFill").style.width = `${percent}%`;
+  $("progressFill").parentElement.setAttribute("aria-valuenow", String(percent));
 }
 let engineReady = false;
 let currentFile = null;
@@ -969,33 +980,52 @@ function appendLog(line) {
   box.scrollTop = box.scrollHeight;
 }
 
-function resetToEmpty() {
-  currentFile = null;
-  currentInfo = null;
+/** 清掉上一次處理留下的畫面與輸出,但保留已載入的檔案與已探測的資訊。 */
+function clearPreviousOutput() {
   if (outputURL) { URL.revokeObjectURL(outputURL); outputURL = null; }
   outputBlob = null;
   outputFileName = "";
   lastReport = null;
-  $("fileInput").value = "";
   $("logBox").textContent = "";
   $("logBox").classList.remove("open");
   $("logToggle").textContent = "顯示詳細記錄";
   $("previewVideo").hidden = true;
   $("previewVideo").src = "";
   $("warnBox").hidden = true;
-  $("sizeWarnBox").hidden = true;
   $("loudnessChart").hidden = true;
   $("chartToggle").hidden = true;
   $("chartToggle").textContent = "顯示響度曲線";
+}
+
+function resetToEmpty() {
+  currentFile = null;
+  currentInfo = null;
+  clearPreviousOutput();
+  $("fileInput").value = "";
+  $("sizeWarnBox").hidden = true;
   $("startBtn").disabled = true;
   setState("empty");
+}
+
+/**
+ * 換個目標重新處理同一個檔案:檔案位元組已經在 wasm 檔案系統裡、
+ * currentInfo 也已經探測過,不需要重新上傳、重新讀取。
+ */
+function backToReadyForReprocess() {
+  clearPreviousOutput();
+  $("startBtn").disabled = false;
+  setState("ready");
 }
 
 let engineLoadPromise = null;
 
 function setEngineLoadUI(text, fraction) {
   $("engineLoadText").textContent = text;
-  if (fraction != null) $("engineLoadFill").style.width = `${Math.round(fraction * 100)}%`;
+  if (fraction != null) {
+    const percent = Math.round(fraction * 100);
+    $("engineLoadFill").style.width = `${percent}%`;
+    $("engineLoadFill").parentElement.setAttribute("aria-valuenow", String(percent));
+  }
   $("engineStatus").textContent = text;
 }
 
@@ -1303,6 +1333,7 @@ function downloadReport() {
 $("downloadBtn").addEventListener("click", downloadOutput);
 $("reportBtn").addEventListener("click", downloadReport);
 $("resetBtn").addEventListener("click", resetToEmpty);
+$("reprocessBtn").addEventListener("click", backToReadyForReprocess);
 $("errorResetBtn").addEventListener("click", resetToEmpty);
 $("cancelBtn").addEventListener("click", () => {
   cancelled = true;
