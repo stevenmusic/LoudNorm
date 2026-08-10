@@ -172,7 +172,7 @@ main{
 /* ── 就緒 / 完成 卡片 ────────────── */
 .card{
   background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius-lg);
-  padding:22px 24px;box-shadow:var(--shadow-sm);
+  padding:18px 20px;box-shadow:var(--shadow-sm);
 }
 .file-row{display:flex;align-items:center;gap:12px;margin-bottom:18px}
 .file-row .mark{
@@ -213,7 +213,7 @@ select:focus{outline:none;border-color:var(--gold)}
 .custom-target-row input[type=number]:focus{outline:none;border-color:var(--gold)}
 .custom-target #customTargetHint{margin-top:8px}
 
-.actions{display:flex;gap:10px;margin-top:20px}
+.actions{display:flex;gap:10px;margin-top:14px}
 .actions .btn{flex:1}
 
 /* ── 處理中 ───────────────────────
@@ -262,18 +262,18 @@ select:focus{outline:none;border-color:var(--gold)}
 .log-box.open{display:block}
 
 /* ── 完成 ───────────────────────── */
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
 .stat-box{
   background:var(--surface-inset);border:1px solid var(--line);border-radius:var(--radius-md);
-  padding:14px 12px;text-align:center;
+  padding:10px 10px;text-align:center;
 }
 .stat-box .lbl{font-size:var(--fs-2xs);color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
 .stat-box .before{font-size:var(--fs-sm);color:var(--muted);font-variant-numeric:tabular-nums;margin-top:6px}
 .stat-box .arrow{color:var(--muted);margin:0 4px}
 .stat-box .after{font-size:var(--fs-lg);color:var(--gold-bright);font-variant-numeric:tabular-nums;font-weight:700}
-.result-note{font-size:var(--fs-sm);color:var(--muted-bright);line-height:1.75;margin-bottom:16px}
+.result-note{font-size:var(--fs-sm);color:var(--muted-bright);line-height:1.65;margin-bottom:10px}
 .loudness-chart{
-  margin-bottom:16px;padding:12px 14px;background:var(--surface-inset);
+  margin-bottom:10px;padding:10px 12px;background:var(--surface-inset);
   border:1px solid var(--line);border-radius:var(--radius-md);
 }
 .loudness-chart-head{
@@ -285,17 +285,20 @@ select:focus{outline:none;border-color:var(--gold)}
 .loudness-chart-legend .dot:first-child{margin-left:0}
 .dot-m{background:var(--gold)}
 .dot-s{background:var(--muted-bright)}
-#loudnessChartSvg{width:100%;height:70px;display:block;overflow:visible}
+#loudnessChartSvg{width:100%;height:52px;display:block;overflow:visible}
 .report-link{
-  display:block;margin:14px auto 0;font-size:var(--fs-xs);color:var(--muted);
+  display:block;margin:10px auto 0;font-size:var(--fs-xs);color:var(--muted);
   background:none;border:none;cursor:pointer;text-decoration:underline;text-underline-offset:3px;
 }
 .report-link:hover{color:var(--muted-bright)}
 .result-note strong{color:var(--ivory)}
-video.preview{width:100%;border-radius:var(--radius-md);margin-bottom:16px;background:#000;display:block}
+video.preview{
+  width:100%;max-height:170px;object-fit:contain;
+  border-radius:var(--radius-md);margin-bottom:10px;background:#000;display:block;
+}
 .warn-box{
   background:var(--danger-bg);border:1px solid var(--danger);border-radius:var(--radius-md);
-  padding:12px 14px;font-size:var(--fs-sm);color:var(--danger);line-height:1.7;margin-bottom:16px;
+  padding:10px 12px;font-size:var(--fs-sm);color:var(--danger);line-height:1.6;margin-bottom:10px;
 }
 
 /* ── 錯誤 ───────────────────────── */
@@ -444,6 +447,12 @@ footer a:hover{color:var(--gold-bright)}
             <div class="after" id="statTpAfter">—</div>
           </div>
         </div>
+        <p class="result-note" id="resultNote"></p>
+        <div class="actions">
+          <button class="btn ghost" id="resetBtn">處理另一個</button>
+          <button class="btn primary" id="downloadBtn">下載成品</button>
+        </div>
+        <button class="report-link" id="chartToggle" hidden>顯示響度曲線</button>
         <div class="loudness-chart" id="loudnessChart" hidden>
           <div class="loudness-chart-head">
             <span>成品響度隨時間變化</span>
@@ -453,11 +462,6 @@ footer a:hover{color:var(--gold-bright)}
             </span>
           </div>
           <svg id="loudnessChartSvg" viewBox="0 0 600 120" preserveAspectRatio="none"></svg>
-        </div>
-        <p class="result-note" id="resultNote"></p>
-        <div class="actions">
-          <button class="btn ghost" id="resetBtn">處理另一個</button>
-          <button class="btn primary" id="downloadBtn">下載成品</button>
         </div>
         <button class="report-link" id="reportBtn">下載響度報告（JSON）</button>
       </div>
@@ -868,11 +872,16 @@ function chooseOutput(info) {
    UI 狀態機
    ════════════════════════════════════════════════════════════════ */
 
-/** Renders momentary + short-term loudness-over-time as an inline SVG line chart. */
+/**
+ * Renders momentary + short-term loudness-over-time as an inline SVG line
+ * chart. Kept behind a collapsed toggle (like the log viewer) rather than
+ * shown by default — it's a bonus/pro detail, not something that should sit
+ * between the result and the download button on a small screen.
+ */
 function renderLoudnessChart(points, targetI) {
   const svg = $("loudnessChartSvg");
   svg.innerHTML = "";
-  if (!points.length) { $("loudnessChart").hidden = true; return; }
+  if (!points.length) { $("chartToggle").hidden = true; $("loudnessChart").hidden = true; return; }
 
   const W = 600, H = 120, PAD_TOP = 10, PAD_BOTTOM = 10;
   const maxT = points[points.length - 1].t || 1;
@@ -914,7 +923,7 @@ function renderLoudnessChart(points, targetI) {
   mPath.setAttribute("style", "fill:none;stroke:var(--gold);stroke-width:1.5");
   svg.appendChild(mPath);
 
-  $("loudnessChart").hidden = false;
+  $("chartToggle").hidden = false;
 }
 
 function formatTime(seconds) {
@@ -976,6 +985,8 @@ function resetToEmpty() {
   $("warnBox").hidden = true;
   $("sizeWarnBox").hidden = true;
   $("loudnessChart").hidden = true;
+  $("chartToggle").hidden = true;
+  $("chartToggle").textContent = "顯示響度曲線";
   $("startBtn").disabled = true;
   setState("empty");
 }
@@ -1178,6 +1189,7 @@ async function startProcessing() {
       renderLoudnessChart(points, preset.i);
     } catch (e) {
       console.error("loudness chart failed:", e);
+      $("chartToggle").hidden = true;
       $("loudnessChart").hidden = true;
     }
 
@@ -1309,6 +1321,11 @@ $("cancelBtn").addEventListener("click", () => {
 $("logToggle").addEventListener("click", () => {
   const open = $("logBox").classList.toggle("open");
   $("logToggle").textContent = open ? "隱藏詳細記錄" : "顯示詳細記錄";
+});
+$("chartToggle").addEventListener("click", () => {
+  const show = $("loudnessChart").hidden;
+  $("loudnessChart").hidden = !show;
+  $("chartToggle").textContent = show ? "隱藏響度曲線" : "顯示響度曲線";
 });
 
 /* ── 主題切換 ───────────────────── */
