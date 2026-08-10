@@ -114,7 +114,7 @@ header h1 span{color:var(--ivory);font-weight:600}
 /* ── 主舞台 ─────────────────────── */
 main{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:28px 16px;position:relative;
+  padding:24px;position:relative;
 }
 .stage{width:100%;max-width:560px}
 
@@ -144,6 +144,12 @@ main{
 }
 .empty-card .empty-title{font-size:var(--fs-lg);line-height:1.5;color:var(--ivory);font-weight:600}
 .empty-card .empty-sub{font-size:var(--fs-sm);line-height:1.7;color:var(--muted)}
+.link-btn{
+  background:none;border:none;color:var(--gold);font-family:inherit;
+  font-size:var(--fs-xs);text-decoration:underline;text-underline-offset:3px;
+  cursor:pointer;margin-top:4px;padding:4px;
+}
+.link-btn:active{color:var(--gold-bright)}
 .privacy-note{
   display:flex;align-items:center;justify-content:center;gap:6px;
   margin-top:16px;font-size:var(--fs-xs);color:var(--muted);text-align:center;
@@ -191,6 +197,21 @@ select{
 }
 select:focus{outline:none;border-color:var(--gold)}
 .field .hint{font-size:var(--fs-xs);color:var(--muted);margin-top:6px;line-height:1.6}
+
+.custom-target{
+  margin-top:-4px;padding:12px 14px;background:var(--surface-inset);
+  border:1px solid var(--line);border-radius:var(--radius-md);
+}
+.custom-target-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.custom-target-row:last-of-type{margin-bottom:0}
+.custom-target-row label{font-size:var(--fs-sm);color:var(--muted-bright)}
+.custom-target-row input[type=number]{
+  width:84px;background:var(--bg);border:1px solid var(--line);color:var(--ivory);
+  font-family:inherit;font-size:var(--fs-md);padding:6px 8px;border-radius:var(--radius-sm);
+  text-align:center;font-variant-numeric:tabular-nums;
+}
+.custom-target-row input[type=number]:focus{outline:none;border-color:var(--gold)}
+.custom-target #customTargetHint{margin-top:8px}
 
 .actions{display:flex;gap:10px;margin-top:20px}
 .actions .btn{flex:1}
@@ -251,6 +272,25 @@ select:focus{outline:none;border-color:var(--gold)}
 .stat-box .arrow{color:var(--muted);margin:0 4px}
 .stat-box .after{font-size:var(--fs-lg);color:var(--gold-bright);font-variant-numeric:tabular-nums;font-weight:700}
 .result-note{font-size:var(--fs-sm);color:var(--muted-bright);line-height:1.75;margin-bottom:16px}
+.loudness-chart{
+  margin-bottom:16px;padding:12px 14px;background:var(--surface-inset);
+  border:1px solid var(--line);border-radius:var(--radius-md);
+}
+.loudness-chart-head{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:var(--fs-2xs);color:var(--muted);margin-bottom:8px;letter-spacing:.04em;
+}
+.loudness-chart-legend{display:flex;align-items:center;gap:4px}
+.loudness-chart-legend .dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-left:8px;margin-right:2px}
+.loudness-chart-legend .dot:first-child{margin-left:0}
+.dot-m{background:var(--gold)}
+.dot-s{background:var(--muted-bright)}
+#loudnessChartSvg{width:100%;height:70px;display:block;overflow:visible}
+.report-link{
+  display:block;margin:14px auto 0;font-size:var(--fs-xs);color:var(--muted);
+  background:none;border:none;cursor:pointer;text-decoration:underline;text-underline-offset:3px;
+}
+.report-link:hover{color:var(--muted-bright)}
 .result-note strong{color:var(--ivory)}
 video.preview{width:100%;border-radius:var(--radius-md);margin-bottom:16px;background:#000;display:block}
 .warn-box{
@@ -307,6 +347,7 @@ footer a:hover{color:var(--gold-bright)}
         </div>
         <p class="empty-title">點擊這裡載入影片或音樂,開始使用</p>
         <p class="empty-sub">支援 MP4 / MOV / WebM / MP3 / WAV 等常見格式</p>
+        <a href="help.html" class="link-btn" id="learnMoreLink">或先看看它是怎麼運作的 →</a>
       </div>
       <p class="privacy-note">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V6z"/></svg>
@@ -340,8 +381,21 @@ footer a:hover{color:var(--gold-bright)}
             <option value="tiktok">TikTok / Instagram（-14 LUFS / -1 dBTP）</option>
             <option value="apple">Apple Music / Podcasts（-16 LUFS / -1 dBTP）</option>
             <option value="broadcast">廣播電視 EBU R128（-23 LUFS / -1 dBTP）</option>
+            <option value="custom">自訂目標…</option>
           </select>
           <p class="hint" id="presetHint"></p>
+        </div>
+
+        <div class="field custom-target" id="customTargetField" hidden>
+          <div class="custom-target-row">
+            <label for="customLufs">整合響度（LUFS）</label>
+            <input type="number" id="customLufs" value="-14" min="-70" max="-5" step="0.5">
+          </div>
+          <div class="custom-target-row">
+            <label for="customTp">真實峰值上限（dBTP）</label>
+            <input type="number" id="customTp" value="-1" min="-9" max="0" step="0.5">
+          </div>
+          <p class="hint" id="customTargetHint"></p>
         </div>
 
         <div class="warn-box" id="sizeWarnBox" hidden></div>
@@ -390,11 +444,22 @@ footer a:hover{color:var(--gold-bright)}
             <div class="after" id="statTpAfter">—</div>
           </div>
         </div>
+        <div class="loudness-chart" id="loudnessChart" hidden>
+          <div class="loudness-chart-head">
+            <span>成品響度隨時間變化</span>
+            <span class="loudness-chart-legend">
+              <span class="dot dot-m"></span>momentary
+              <span class="dot dot-s"></span>short-term
+            </span>
+          </div>
+          <svg id="loudnessChartSvg" viewBox="0 0 600 120" preserveAspectRatio="none"></svg>
+        </div>
         <p class="result-note" id="resultNote"></p>
         <div class="actions">
           <button class="btn ghost" id="resetBtn">處理另一個</button>
           <button class="btn primary" id="downloadBtn">下載成品</button>
         </div>
+        <button class="report-link" id="reportBtn">下載響度報告（JSON）</button>
       </div>
     </div>
 
@@ -688,14 +753,54 @@ class Engine {
     return { gainDb: headroom + applied, useLimiter: true, ceiling, headroom, limitingDb: applied, shortfallDb: shortfall };
   }
 
-  buildAudioChain(gainDb, useLimiter, ceilingDb) {
+  buildAudioChain(gainDb, useLimiter, ceilingDb, needsDither) {
     let chain = "aformat=sample_fmts=dbl";
     if (Math.abs(gainDb) > 1e-9) chain += `,volume=${gainDb.toFixed(6)}dB:precision=double`;
     if (useLimiter) {
       const linear = dbToLinear(ceilingDb);
       chain += `,aresample=192000,alimiter=limit=${linear.toFixed(6)}:attack=5:release=50:asc=1:level=false:latency=1,aresample=48000`;
     }
+    if (needsDither) {
+      // FFmpeg's default when narrowing sample format is dither_method=0,
+      // i.e. no dither at all — plain truncation. Confirmed directly: a tone
+      // 90 dB down, run through the default conversion to 16-bit, comes out
+      // as literal zero bytes. Any PCM output that narrows from our 64-bit
+      // float working format deserves proper noise-shaped dithering, the
+      // same as a real mastering chain would apply on the final bit-depth
+      // conversion.
+      chain += ",aresample=dither_method=triangular_hp";
+    }
     return chain;
+  }
+
+  /**
+   * 用 ebur128 濾鏡跑一次分析,把它每隔一小段時間印出的即時響度數字
+   * (momentary / short-term) 解析成時間序列,畫成響度曲線用。
+   * 注意:ebur128 的 dual-mono 選項是 `dualmono`,跟 loudnorm 的
+   * `dual_mono` 拼法不同。
+   */
+  async measureTimeSeries(fileName, dualMono) {
+    let captured = "";
+    const capture = ({ message }) => { captured += message + "\n"; };
+    this.ffmpeg.on("log", capture);
+    const dm = dualMono ? ":dualmono=true" : "";
+    await this.ffmpeg.exec([
+      "-i", fileName, "-af", `ebur128=peak=true${dm}`, "-f", "null", "-",
+    ]);
+    this.ffmpeg.off("log", capture);
+
+    const points = [];
+    const lineRe = /t:\s*([\d.]+)\s+TARGET:.*?M:\s*(-?[\d.]+|-inf)\s+S:\s*(-?[\d.]+|-inf)\s+I:\s*(-?[\d.]+|-inf)/;
+    for (const line of captured.split("\n")) {
+      const m = line.match(lineRe);
+      if (!m) continue;
+      points.push({
+        t: parseFloat(m[1]),
+        m: toFloatOrNull(m[2]),
+        s: toFloatOrNull(m[3]),
+      });
+    }
+    return points;
   }
 
   /**
@@ -705,12 +810,13 @@ class Engine {
   async renderAndVerify(outputPlan, targetI, targetTP, dualMono, container, audioCodec, audioArgs, hasVideo, onStage) {
     let plan = { ...outputPlan };
     const outputName = "output." + container;
+    const needsDither = audioCodec.startsWith("pcm_");
     let corrections = 0;
     let finalStats = null;
 
     while (true) {
       onStage(corrections === 0 ? "輸出成品" : `修正峰值（第 ${corrections} 次）`);
-      const chain = this.buildAudioChain(plan.gainDb, plan.useLimiter, plan.ceiling);
+      const chain = this.buildAudioChain(plan.gainDb, plan.useLimiter, plan.ceiling, needsDither);
       try { await this.ffmpeg.deleteFile(outputName); } catch (e) {}
 
       const args = ["-i", this.inputName, "-filter_complex", `[0:a:0]${chain}[out]`];
@@ -736,6 +842,10 @@ class Engine {
   }
 }
 
+function isSurroundLayout(layout) {
+  return !!layout && layout !== "mono" && layout !== "stereo";
+}
+
 function normaliseCodec(c) {
   const m = { "h264": "h264", "hevc": "hevc", "h265": "hevc", "vp8": "vp8", "vp9": "vp9", "av1": "av1", "mpeg4": "mpeg4" };
   return m[c.toLowerCase()] || c.toLowerCase();
@@ -743,7 +853,11 @@ function normaliseCodec(c) {
 
 function chooseOutput(info) {
   if (!info.hasVideo) {
-    return { container: "wav", audioCodec: "pcm_s16le", audioArgs: [], hasVideo: false, lossless: true };
+    // 24-bit rather than 16-bit: with 64-bit float internally the whole way
+    // through, 24-bit output leaves the quantization noise floor around
+    // -144 dBFS instead of -96 dBFS — closer to lossless in practice, and it
+    // matches the desktop tool's own default for lossless PCM output.
+    return { container: "wav", audioCodec: "pcm_s24le", audioArgs: [], hasVideo: false, lossless: true };
   }
   const rule = VIDEO_RULES.find((r) => r.codecs.includes(info.videoCodec));
   if (!rule) return null;
@@ -753,6 +867,55 @@ function chooseOutput(info) {
 /* ════════════════════════════════════════════════════════════════
    UI 狀態機
    ════════════════════════════════════════════════════════════════ */
+
+/** Renders momentary + short-term loudness-over-time as an inline SVG line chart. */
+function renderLoudnessChart(points, targetI) {
+  const svg = $("loudnessChartSvg");
+  svg.innerHTML = "";
+  if (!points.length) { $("loudnessChart").hidden = true; return; }
+
+  const W = 600, H = 120, PAD_TOP = 10, PAD_BOTTOM = 10;
+  const maxT = points[points.length - 1].t || 1;
+
+  const finiteValues = points.flatMap((p) => [p.m, p.s]).filter((v) => v !== null);
+  let lo = Math.min(targetI, ...finiteValues) - 4;
+  let hi = Math.max(targetI, ...finiteValues) + 4;
+  if (hi - lo < 12) { const mid = (hi + lo) / 2; lo = mid - 6; hi = mid + 6; }
+
+  const x = (t) => (t / maxT) * W;
+  const y = (lufs) => H - PAD_BOTTOM - ((lufs - lo) / (hi - lo)) * (H - PAD_TOP - PAD_BOTTOM);
+
+  function pathFor(key) {
+    let d = "";
+    let drawing = false;
+    for (const p of points) {
+      const v = p[key];
+      if (v === null) { drawing = false; continue; }
+      d += (drawing ? " L " : " M ") + x(p.t).toFixed(1) + " " + y(v).toFixed(1);
+      drawing = true;
+    }
+    return d.trim();
+  }
+
+  const ns = "http://www.w3.org/2000/svg";
+  const targetLine = document.createElementNS(ns, "line");
+  targetLine.setAttribute("x1", "0"); targetLine.setAttribute("x2", String(W));
+  targetLine.setAttribute("y1", y(targetI).toFixed(1)); targetLine.setAttribute("y2", y(targetI).toFixed(1));
+  targetLine.setAttribute("style", "stroke:var(--line);stroke-width:1;stroke-dasharray:3,3");
+  svg.appendChild(targetLine);
+
+  const sPath = document.createElementNS(ns, "path");
+  sPath.setAttribute("d", pathFor("s"));
+  sPath.setAttribute("style", "fill:none;stroke:var(--muted-bright);stroke-width:1.5;opacity:0.7");
+  svg.appendChild(sPath);
+
+  const mPath = document.createElementNS(ns, "path");
+  mPath.setAttribute("d", pathFor("m"));
+  mPath.setAttribute("style", "fill:none;stroke:var(--gold);stroke-width:1.5");
+  svg.appendChild(mPath);
+
+  $("loudnessChart").hidden = false;
+}
 
 function formatTime(seconds) {
   seconds = Math.max(0, Math.round(seconds || 0));
@@ -781,6 +944,7 @@ let currentInfo = null;
 let outputURL = null;
 let outputBlob = null;
 let outputFileName = "";
+let lastReport = null;
 let cancelled = false;
 
 function setState(state) { app.dataset.state = state; }
@@ -802,6 +966,7 @@ function resetToEmpty() {
   if (outputURL) { URL.revokeObjectURL(outputURL); outputURL = null; }
   outputBlob = null;
   outputFileName = "";
+  lastReport = null;
   $("fileInput").value = "";
   $("logBox").textContent = "";
   $("logBox").classList.remove("open");
@@ -810,6 +975,7 @@ function resetToEmpty() {
   $("previewVideo").src = "";
   $("warnBox").hidden = true;
   $("sizeWarnBox").hidden = true;
+  $("loudnessChart").hidden = true;
   $("startBtn").disabled = true;
   setState("empty");
 }
@@ -881,7 +1047,10 @@ async function handleFile(file) {
     currentInfo = await engine.probe();
     const parts = [];
     if (currentInfo.hasVideo) parts.push(`${currentInfo.videoCodec.toUpperCase()} ${currentInfo.width}x${currentInfo.height}`);
-    if (currentInfo.hasAudio) parts.push(`${currentInfo.sampleRate}Hz ${currentInfo.channelLayout}`);
+    if (currentInfo.hasAudio) {
+      parts.push(`${currentInfo.sampleRate}Hz ${currentInfo.channelLayout}`);
+      if (isSurroundLayout(currentInfo.channelLayout)) parts.push("環繞音效");
+    }
     if (currentInfo.duration) {
       const m = Math.floor(currentInfo.duration / 60), s = Math.round(currentInfo.duration % 60);
       parts.push(`${m}:${String(s).padStart(2, "0")}`);
@@ -899,15 +1068,38 @@ async function handleFile(file) {
   }
 }
 
+function clamp(value, lo, hi) { return Math.min(hi, Math.max(lo, value)); }
+
+/** Same bounds as the desktop tool's presets.py: LUFS -70..-5, TP -9..0. */
+function resolveActivePreset() {
+  const key = $("presetSelect").value;
+  if (key !== "custom") return PRESETS[key];
+
+  const rawLufs = parseFloat($("customLufs").value);
+  const rawTp = parseFloat($("customTp").value);
+  const i = clamp(Number.isFinite(rawLufs) ? rawLufs : -14, -70, -5);
+  const tp = clamp(Number.isFinite(rawTp) ? rawTp : -1, -9, 0);
+  return { label: "自訂", i, tp, note: "" };
+}
+
 function updatePresetHint() {
-  const preset = PRESETS[$("presetSelect").value];
-  $("presetHint").textContent = preset.note;
+  const isCustom = $("presetSelect").value === "custom";
+  $("customTargetField").hidden = !isCustom;
+
+  if (isCustom) {
+    const preset = resolveActivePreset();
+    $("presetHint").textContent = "";
+    $("customTargetHint").textContent =
+      `目標：${preset.i.toFixed(1)} LUFS / ${preset.tp.toFixed(1)} dBTP` +
+      (preset.i > -8 ? "　響度目標偏高，成品可能需要較多限幅甚至無法完全達標。" : "");
+  } else {
+    $("presetHint").textContent = PRESETS[$("presetSelect").value].note;
+  }
 }
 
 async function startProcessing() {
   if (!currentFile || !currentInfo) return;
-  const presetKey = $("presetSelect").value;
-  const preset = PRESETS[presetKey];
+  const preset = resolveActivePreset();
   setState("working");
   cancelled = false;
   progressTotalSeconds = currentInfo.duration || 0;
@@ -965,7 +1157,10 @@ async function startProcessing() {
     const gainDirection = plan.gainDb >= 0 ? "提升" : "降低";
     let note = `${gainDirection} ${Math.abs(plan.gainDb).toFixed(1)} dB`;
     note += plan.useLimiter ? "，其中部分經過真實峰值限幅器處理" : "（純增益，不改變音質）";
-    note += output.hasVideo ? "。影像已原封不動保留，未重新編碼。" : "。輸出為無損 WAV。";
+    note += output.hasVideo ? "。影像已原封不動保留，未重新編碼。" : "。輸出為無損 24-bit WAV。";
+    if (isSurroundLayout(currentInfo.channelLayout)) {
+      note += `依 ITU-R BS.1770 對 ${currentInfo.channelLayout} 環繞聲道加權量測，非只取前左右聲道。`;
+    }
     $("resultNote").textContent = note;
 
     if (plan.shortfallDb > 0.5) {
@@ -974,6 +1169,48 @@ async function startProcessing() {
     } else {
       $("warnBox").hidden = true;
     }
+
+    // Optional and purely informational — never let a failure here take
+    // down a job that has otherwise already succeeded.
+    try {
+      progressStageLabel = "分析響度變化";
+      const points = await engine.measureTimeSeries(result.outputName, currentInfo.dualMono);
+      renderLoudnessChart(points, preset.i);
+    } catch (e) {
+      console.error("loudness chart failed:", e);
+      $("loudnessChart").hidden = true;
+    }
+
+    lastReport = {
+      generatedBy: "LoudMaster",
+      generatedAt: new Date().toISOString(),
+      sourceFile: currentFile.name,
+      sourceInfo: {
+        durationSeconds: currentInfo.duration,
+        videoCodec: currentInfo.videoCodec,
+        resolution: currentInfo.hasVideo ? `${currentInfo.width}x${currentInfo.height}` : null,
+        audioCodec: currentInfo.audioCodec,
+        sampleRateHz: currentInfo.sampleRate,
+        channelLayout: currentInfo.channelLayout,
+      },
+      target: { label: preset.label, integratedLufs: preset.i, truePeakDbtp: preset.tp },
+      measured: {
+        beforeIntegratedLufs: src.i,
+        beforeTruePeakDbtp: src.tp,
+        afterIntegratedLufs: result.finalStats.i,
+        afterTruePeakDbtp: result.finalStats.tp,
+      },
+      processing: {
+        gainDb: Number(plan.gainDb.toFixed(3)),
+        limiterUsed: plan.useLimiter,
+        limitingDb: Number((plan.limitingDb || 0).toFixed(3)),
+        peakCorrections: result.corrections,
+        shortfallDb: plan.shortfallDb ? Number(plan.shortfallDb.toFixed(3)) : 0,
+        videoStreamCopied: output.hasVideo,
+        outputCodec: output.audioCodec,
+      },
+      outputFile: outputFileName,
+    };
 
     setState("done");
   } catch (e) {
@@ -985,7 +1222,9 @@ async function startProcessing() {
 /* ── 事件綁定 ───────────────────── */
 
 $("emptyCard").addEventListener("click", () => $("fileInput").click());
+$("learnMoreLink").addEventListener("click", (e) => e.stopPropagation()); // 避免同時觸發外層 emptyCard 的上傳點擊
 $("emptyCard").addEventListener("keydown", (e) => {
+  if (e.target === $("learnMoreLink")) return; // 讓連結自己的 Enter 導覽照常運作
   if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("fileInput").click(); }
 });
 $("fileInput").addEventListener("change", (e) => handleFile(e.target.files[0]));
@@ -999,6 +1238,8 @@ $("fileInput").addEventListener("change", (e) => handleFile(e.target.files[0]));
 $("emptyCard").addEventListener("drop", (e) => handleFile(e.dataTransfer.files[0]));
 
 $("presetSelect").addEventListener("change", updatePresetHint);
+$("customLufs").addEventListener("input", updatePresetHint);
+$("customTp").addEventListener("input", updatePresetHint);
 $("chooseAnother").addEventListener("click", resetToEmpty);
 $("startBtn").addEventListener("click", startProcessing);
 /**
@@ -1010,9 +1251,8 @@ $("startBtn").addEventListener("click", startProcessing);
  * (native share sheet → Save Video / Save to Files). Everywhere else, the
  * classic temporary-anchor blob download still works fine.
  */
-async function downloadOutput() {
-  if (!outputBlob) return;
-  const file = new File([outputBlob], outputFileName, { type: outputBlob.type });
+async function shareOrDownloadBlob(blob, filename) {
+  const file = new File([blob], filename, { type: blob.type });
 
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
     try {
@@ -1024,15 +1264,32 @@ async function downloadOutput() {
     }
   }
 
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = outputURL;
-  a.download = outputFileName;
+  a.href = url;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
+  // Only revoke this one-off URL, never outputURL — that one is still bound
+  // to the visible <video> preview / the button's next click.
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
+function downloadOutput() {
+  if (!outputBlob) return;
+  return shareOrDownloadBlob(outputBlob, outputFileName);
+}
+
+function downloadReport() {
+  if (!lastReport) return;
+  const blob = new Blob([JSON.stringify(lastReport, null, 2)], { type: "application/json" });
+  const name = outputFileName.replace(/\.[^.]+$/, "") + "_report.json";
+  return shareOrDownloadBlob(blob, name);
 }
 
 $("downloadBtn").addEventListener("click", downloadOutput);
+$("reportBtn").addEventListener("click", downloadReport);
 $("resetBtn").addEventListener("click", resetToEmpty);
 $("errorResetBtn").addEventListener("click", resetToEmpty);
 $("cancelBtn").addEventListener("click", () => {
