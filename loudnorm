@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Convenience wrapper:  ./loudnorm 影片.mp4
+cd "$(dirname "$0")" || exit 1
+exec python3 -m loudmaster "$@"
