@@ -412,23 +412,26 @@ footer a:hover{color:var(--gold-bright)}
 </footer>
 
 <script type="module">
-// Two mirrors of the same npm packages. jsdelivr first (fastest in most
-// regions), unpkg as a fallback if a CDN hiccups or is blocked on a given
-// network — a bare import statement can't retry, so everything below is
-// loaded dynamically instead.
+// Self-hosted, same origin as this page (vendor/ffmpeg/…) — not loaded from
+// jsdelivr/unpkg. Two independent problems pushed this here after the CDN
+// version kept failing on a real device even with a cross-CDN fallback:
+//   1. @ffmpeg/ffmpeg creates its worker with
+//      `new Worker(new URL("./worker.js", import.meta.url), {type:"module"})`.
+//      When the module is fetched from a CDN, import.meta.url is the CDN's
+//      URL, so the worker itself is a cross-origin module worker — a
+//      combination that has known reliability problems on WebKit/Safari,
+//      independent of whether the CDN itself is reachable.
+//   2. Even the "reachable" case still depended on a third party being up,
+//      fast, and unblocked on whatever network the visitor is on.
+// Serving everything from the same origin as the page removes both at once.
 const CDN_MIRRORS = [
   {
-    ffmpeg: "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js",
-    util: "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js",
-    core: "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm",
-  },
-  {
-    ffmpeg: "https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js",
-    util: "https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js",
-    core: "https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm",
+    ffmpeg: "./vendor/ffmpeg/ffmpeg/index.js",
+    util: "./vendor/ffmpeg/util/index.js",
+    core: "./vendor/ffmpeg/core",
   },
 ];
-const LOAD_TIMEOUT_MS = 45000;
+const LOAD_TIMEOUT_MS = 60000;
 
 function withTimeout(promise, ms, label) {
   let timer;
@@ -441,13 +444,14 @@ function withTimeout(promise, ms, label) {
 let FFmpeg, toBlobURL, fetchFile, CORE_BASE;
 let engineLoadErrors = [];
 
-/** 依序試過每個 CDN 鏡像，全部失敗才真的報錯，並保留每次嘗試的原因。 */
+/** 依序試過每個來源，全部失敗才真的報錯，並保留每次嘗試的原因（目前只有同源這一個來源，
+ *  但保留這個結構——之後若需要外部備援來源，直接加進 CDN_MIRRORS 就行）。 */
 async function loadEngineModules(onProgress) {
   engineLoadErrors = [];
   for (let i = 0; i < CDN_MIRRORS.length; i++) {
     const mirror = CDN_MIRRORS[i];
     try {
-      onProgress?.(`連線處理引擎（來源 ${i + 1}/${CDN_MIRRORS.length}）…`);
+      onProgress?.("載入處理引擎程式…");
       const [ffmpegMod, utilMod] = await withTimeout(
         Promise.all([import(mirror.ffmpeg), import(mirror.util)]),
         LOAD_TIMEOUT_MS,
@@ -462,7 +466,7 @@ async function loadEngineModules(onProgress) {
       engineLoadErrors.push(`來源 ${i + 1}：${e.message || e}`);
     }
   }
-  throw new Error("所有來源都連不上處理引擎。\n" + engineLoadErrors.join("\n"));
+  throw new Error("連不上處理引擎。\n" + engineLoadErrors.join("\n"));
 }
 
 /* ════════════════════════════════════════════════════════════════
