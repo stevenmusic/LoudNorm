@@ -447,6 +447,56 @@ function withTimeout(promise, ms, label) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+/**
+ * A replacement for @ffmpeg/util's toBlobURL(url, mime, true, cb).
+ *
+ * That function's progress path reads the response body via
+ * `resp.body.getReader()`, and if the read loop throws for ANY reason, its
+ * catch block calls `resp.arrayBuffer()` on that SAME response — whose body
+ * is already partially consumed ("disturbed") or still held by the reader
+ * ("locked"). Both cases throw `TypeError: Body is disturbed or locked`,
+ * which is exactly the failure this was hitting in the wild: a ~31MB
+ * streamed download is the one most likely to have its reader loop hiccup
+ * partway through on a mobile connection, and the library's own fallback
+ * turns that into a hard crash instead of recovering.
+ *
+ * Fixed here by never touching the disturbed response: if the streaming
+ * read fails, we retry with a completely fresh fetch() (a new, unlocked
+ * response) instead of resuming the old one.
+ */
+async function fetchBlobURLWithProgress(url, mimeType, onProgress) {
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`下載失敗（HTTP ${resp.status}）：${url}`);
+
+  const total = parseInt(resp.headers.get("Content-Length") || "-1", 10);
+  const reader = resp.body?.getReader();
+  if (!reader) {
+    const buf = await resp.arrayBuffer();
+    return URL.createObjectURL(new Blob([buf], { type: mimeType }));
+  }
+
+  try {
+    const chunks = [];
+    let received = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      if (total > 0) onProgress?.({ received, total });
+    }
+    return URL.createObjectURL(new Blob(chunks, { type: mimeType }));
+  } catch (e) {
+    // The streamed read failed partway through — resp's body is now
+    // disturbed, so we start over with a brand new response rather than
+    // touching it again.
+    const fresh = await fetch(url);
+    if (!fresh.ok) throw new Error(`下載失敗（HTTP ${fresh.status}）：${url}`);
+    const buf = await fresh.arrayBuffer();
+    return URL.createObjectURL(new Blob([buf], { type: mimeType }));
+  }
+}
+
 let FFmpeg, toBlobURL, fetchFile, CORE_BASE;
 let engineLoadErrors = [];
 
@@ -549,11 +599,13 @@ class Engine {
     );
     // The wasm binary is ~31MB — on a slow connection this is the step that
     // takes real time, so it gets its own progress readout rather than
-    // leaving the user staring at an unchanged screen.
+    // leaving the user staring at an unchanged screen. Uses our own fetch
+    // helper, not @ffmpeg/util's toBlobURL(…, true, …) — see
+    // fetchBlobURLWithProgress's comment for why.
     const wasmURL = await withTimeout(
-      toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, "application/wasm", true,
+      fetchBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core.wasm`, "application/wasm",
         ({ received, total }) => {
-          if (total > 0) onProgress?.("下載處理引擎…", received / total);
+          onProgress?.("下載處理引擎…", received / total);
         }),
       LOAD_TIMEOUT_MS, "下載引擎核心"
     );
