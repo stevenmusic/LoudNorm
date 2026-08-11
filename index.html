@@ -1578,22 +1578,45 @@ $("variantDenoiseBtn").addEventListener("click", () => applyVariant("denoised"))
 // Keeps the hidden audio overlay (see applyVariant's previewOnly branch) in
 // lockstep with the visible video whenever the active variant is borrowing
 // the plain video's picture instead of having its own.
+//
+// Correcting drift on every timeupdate (which fires several times a second)
+// was making the overlay audio audibly choppy — each currentTime write forces
+// a re-seek, and doing that continuously sounds like stutter, which is
+// exactly the wrong artifact to introduce on something meant for careful
+// A/B listening. Two independently-decoded tracks of the same short clip
+// don't drift enough over a normal listen to need constant nudging, so this
+// only re-syncs on play/seek (discrete, expected moments) and otherwise
+// checks for drift on a slow interval with a much more tolerant threshold.
 (function () {
   const video = $("previewVideo");
   const overlay = $("previewAudioOverlay");
   const previewOnlyActive = () => !!variants?.[activeVariant]?.previewOnly;
+  let driftCheckTimer = null;
+
+  function startDriftCheck() {
+    stopDriftCheck();
+    driftCheckTimer = setInterval(() => {
+      if (!previewOnlyActive() || video.paused) return;
+      if (Math.abs(overlay.currentTime - video.currentTime) > 1.5) {
+        overlay.currentTime = video.currentTime;
+      }
+    }, 4000);
+  }
+  function stopDriftCheck() {
+    if (driftCheckTimer) { clearInterval(driftCheckTimer); driftCheckTimer = null; }
+  }
+
   video.addEventListener("play", () => {
     if (!previewOnlyActive()) return;
     overlay.currentTime = video.currentTime;
     overlay.play().catch(() => {});
+    startDriftCheck();
   });
-  video.addEventListener("pause", () => { if (previewOnlyActive()) overlay.pause(); });
+  video.addEventListener("pause", () => {
+    if (previewOnlyActive()) overlay.pause();
+    stopDriftCheck();
+  });
   video.addEventListener("seeking", () => { if (previewOnlyActive()) overlay.currentTime = video.currentTime; });
-  video.addEventListener("timeupdate", () => {
-    if (previewOnlyActive() && Math.abs(overlay.currentTime - video.currentTime) > 0.3) {
-      overlay.currentTime = video.currentTime;
-    }
-  });
 })();
 
 /* ── 主題切換 ───────────────────── */
