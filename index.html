@@ -1579,14 +1579,17 @@ $("variantDenoiseBtn").addEventListener("click", () => applyVariant("denoised"))
 // lockstep with the visible video whenever the active variant is borrowing
 // the plain video's picture instead of having its own.
 //
-// Correcting drift on every timeupdate (which fires several times a second)
-// was making the overlay audio audibly choppy — each currentTime write forces
-// a re-seek, and doing that continuously sounds like stutter, which is
-// exactly the wrong artifact to introduce on something meant for careful
-// A/B listening. Two independently-decoded tracks of the same short clip
-// don't drift enough over a normal listen to need constant nudging, so this
-// only re-syncs on play/seek (discrete, expected moments) and otherwise
-// checks for drift on a slow interval with a much more tolerant threshold.
+// Two independently-decoded elements drift apart continuously, not just
+// occasionally — a loose/infrequent check (previously: every 4s, only past
+// 1.5s off) left them audibly out of sync between checks. But correcting
+// with a hard currentTime seek every time (previously: on every timeupdate)
+// is audible as stutter, which is worse. The fix used by every serious
+// dual-track-sync implementation is to nudge the lagging/leading element's
+// *playbackRate* by a couple percent instead of seeking — inaudible, and it
+// converges drift back to zero within a second or two. Checked frequently
+// (every 300ms) since the correction itself makes no sound. A real jump
+// (e.g. resuming after a long pause) still gets a hard seek, since a few
+// percent of speed change can't close a multi-second gap quickly.
 (function () {
   const video = $("previewVideo");
   const overlay = $("previewAudioOverlay");
@@ -1597,13 +1600,20 @@ $("variantDenoiseBtn").addEventListener("click", () => applyVariant("denoised"))
     stopDriftCheck();
     driftCheckTimer = setInterval(() => {
       if (!previewOnlyActive() || video.paused) return;
-      if (Math.abs(overlay.currentTime - video.currentTime) > 1.5) {
+      const drift = overlay.currentTime - video.currentTime; // + = overlay ahead
+      if (Math.abs(drift) > 1.5) {
         overlay.currentTime = video.currentTime;
+        overlay.playbackRate = 1;
+      } else if (Math.abs(drift) > 0.05) {
+        overlay.playbackRate = drift > 0 ? 0.97 : 1.03;
+      } else {
+        overlay.playbackRate = 1;
       }
-    }, 4000);
+    }, 300);
   }
   function stopDriftCheck() {
     if (driftCheckTimer) { clearInterval(driftCheckTimer); driftCheckTimer = null; }
+    overlay.playbackRate = 1;
   }
 
   video.addEventListener("play", () => {
@@ -1616,7 +1626,9 @@ $("variantDenoiseBtn").addEventListener("click", () => applyVariant("denoised"))
     if (previewOnlyActive()) overlay.pause();
     stopDriftCheck();
   });
-  video.addEventListener("seeking", () => { if (previewOnlyActive()) overlay.currentTime = video.currentTime; });
+  video.addEventListener("seeking", () => {
+    if (previewOnlyActive()) { overlay.currentTime = video.currentTime; overlay.playbackRate = 1; }
+  });
 })();
 
 /* ── 主題切換 ───────────────────── */
