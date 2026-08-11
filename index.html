@@ -1020,6 +1020,105 @@ let activeVariant = "plain";
 // renders the real, full video on demand, right before it's downloaded.
 let rebuildFullDenoisedVariant = null;
 
+/**
+ * Drives the denoised-preview audio while it's just borrowing the plain
+ * video's picture (see buildVariant's previewOnly). "plain" is always heard
+ * through the video's own muxed audio track — perfectly synced by
+ * definition, since one media element decodes both at once. Getting the
+ * *denoised* comparison audio that same guarantee isn't possible by playing
+ * a second, independently-decoded <audio> element in parallel — two
+ * separately-clocked elements drift against each other continuously, and
+ * every attempt at fixing that live (seeking on drift, then easing the
+ * seek threshold) traded stutter for audible desync or back again.
+ *
+ * The actual fix is to stop using a second media element at all. Web Audio's
+ * AudioContext gives every node it schedules the *same* clock, so instead of
+ * syncing two independent playback engines after the fact, the denoised
+ * track is decoded once into an AudioBuffer and played through a
+ * BufferSourceNode scheduled against that one shared clock — switching
+ * tabs is then just muting the video and moving a GainNode from 0 to 1
+ * (and back), with zero re-seek, zero pause, and no drift to correct in the
+ * first place. It keeps running *silently* in the background even while
+ * "plain" is showing, so a switch never has to start it from cold.
+ */
+let denoiseAudioGraph = null; // { ctx, gain, buffer, source, startedAtCtxTime, startedAtOffset }
+let denoiseSyncTimer = null;
+
+async function setupDenoiseAudioGraph() {
+  denoiseAudioGraph = null;
+  if (!variants?.denoised) return;
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    const arrayBuffer = await variants.denoised.blob.arrayBuffer();
+    const buffer = await ctx.decodeAudioData(arrayBuffer);
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    gain.connect(ctx.destination);
+    denoiseAudioGraph = { ctx, gain, buffer, source: null, startedAtCtxTime: 0, startedAtOffset: 0 };
+  } catch (e) {
+    console.error("denoise audio graph setup failed (falling back to plain-only playback):", e);
+    denoiseAudioGraph = null;
+  }
+}
+
+function startDenoiseSource(offsetSeconds) {
+  if (!denoiseAudioGraph) return;
+  stopDenoiseSource();
+  const source = denoiseAudioGraph.ctx.createBufferSource();
+  source.buffer = denoiseAudioGraph.buffer;
+  source.connect(denoiseAudioGraph.gain);
+  const safeOffset = Math.max(0, Math.min(offsetSeconds, denoiseAudioGraph.buffer.duration - 0.02));
+  source.start(0, safeOffset);
+  denoiseAudioGraph.source = source;
+  denoiseAudioGraph.startedAtCtxTime = denoiseAudioGraph.ctx.currentTime;
+  denoiseAudioGraph.startedAtOffset = safeOffset;
+}
+
+function stopDenoiseSource() {
+  if (denoiseAudioGraph?.source) {
+    try { denoiseAudioGraph.source.stop(); } catch (e) {}
+    denoiseAudioGraph.source = null;
+  }
+}
+
+function teardownDenoiseAudioGraph() {
+  stopDenoiseSyncLoop();
+  stopDenoiseSource();
+  if (denoiseAudioGraph) { try { denoiseAudioGraph.ctx.close(); } catch (e) {} }
+  denoiseAudioGraph = null;
+}
+
+/**
+ * Runs continuously in the background — including while "plain" is showing
+ * and the denoise source is silent — so the moment someone switches tabs,
+ * it's already been kept in position. Correcting while silent can be a hard
+ * seek (nobody hears it); correcting while it's actually the audible one
+ * uses the same gentle playbackRate nudge as before, to avoid an audible
+ * seek glitch during the one moment that would actually matter.
+ */
+function startDenoiseSyncLoop() {
+  stopDenoiseSyncLoop();
+  const video = $("previewVideo");
+  denoiseSyncTimer = setInterval(() => {
+    if (!denoiseAudioGraph?.source || video.paused) return;
+    const expected = denoiseAudioGraph.startedAtOffset + (denoiseAudioGraph.ctx.currentTime - denoiseAudioGraph.startedAtCtxTime);
+    const drift = expected - video.currentTime;
+    if (activeVariant !== "denoised") {
+      if (Math.abs(drift) > 0.15) startDenoiseSource(video.currentTime);
+    } else if (Math.abs(drift) > 1.5) {
+      startDenoiseSource(video.currentTime);
+    } else if (Math.abs(drift) > 0.05) {
+      denoiseAudioGraph.source.playbackRate.value = drift > 0 ? 0.97 : 1.03;
+    } else {
+      denoiseAudioGraph.source.playbackRate.value = 1;
+    }
+  }, 300);
+}
+function stopDenoiseSyncLoop() {
+  if (denoiseSyncTimer) { clearInterval(denoiseSyncTimer); denoiseSyncTimer = null; }
+}
+
 function setState(state) { app.dataset.state = state; }
 
 function showError(message) {
@@ -1035,6 +1134,7 @@ function appendLog(line) {
 
 /** 清掉上一次處理留下的畫面與輸出,但保留已載入的檔案與已探測的資訊。 */
 function clearPreviousOutput() {
+  teardownDenoiseAudioGraph();
   if (variants) {
     for (const key of Object.keys(variants)) {
       if (variants[key]?.url) URL.revokeObjectURL(variants[key].url);
@@ -1080,11 +1180,19 @@ function applyVariant(key) {
   const video = $("previewVideo");
   const overlay = $("previewAudioOverlay");
 
-  if (v.previewOnly) {
-    // No picture of its own (see buildVariant) — keep showing the plain
-    // variant's already-loaded video for the picture, unchanged, and swap
-    // in this variant's audio through a synced hidden <audio> instead of
-    // loading a second full video just to compare a few seconds of sound.
+  if (v.previewOnly && denoiseAudioGraph) {
+    // The good path: no second video, no second media element — just mute
+    // the video (its own audio is "plain") and bring up the GainNode that's
+    // been silently playing the denoised track in sync all along.
+    const plainURL = variants.plain?.url;
+    if (plainURL && video.src !== plainURL) video.src = plainURL;
+    video.hidden = false;
+    video.classList.remove("audio-only");
+    video.muted = true;
+    denoiseAudioGraph.gain.gain.value = 1;
+  } else if (v.previewOnly) {
+    // Fallback for a browser where decodeAudioData failed — best-effort
+    // dual-media-element sync, same picture-reuse trick, weaker guarantees.
     const plainURL = variants.plain?.url;
     if (plainURL && video.src !== plainURL) video.src = plainURL;
     video.hidden = false;
@@ -1094,6 +1202,7 @@ function applyVariant(key) {
     overlay.currentTime = video.currentTime || 0;
     if (!video.paused) overlay.play().catch(() => {});
   } else {
+    if (denoiseAudioGraph) denoiseAudioGraph.gain.gain.value = 0;
     overlay.pause();
     video.muted = false;
     video.src = v.url;
@@ -1413,6 +1522,7 @@ async function startProcessing() {
     progressStageLabel = "完成";
 
     variants = builtVariants;
+    if (compare && output.hasVideo) await setupDenoiseAudioGraph();
     $("statLufsBefore").textContent = `${src.i.toFixed(1)} LUFS`;
     $("statTpBefore").textContent = src.tp !== null ? `${src.tp.toFixed(1)} dBTP` : "—";
     $("variantSwitch").hidden = !compare;
@@ -1523,6 +1633,7 @@ async function downloadOutput() {
       URL.revokeObjectURL(variants[activeVariant].url);
       variants[activeVariant] = full;
       rebuildFullDenoisedVariant = null; // already upgraded — no need to redo this
+      teardownDenoiseAudioGraph(); // it now has its own real audio track, muxed in
       applyVariant(activeVariant);
     } catch (e) {
       console.error("full-video rebuild for download failed:", e);
@@ -1575,32 +1686,24 @@ $("chartToggle").addEventListener("click", () => {
 $("variantPlainBtn").addEventListener("click", () => applyVariant("plain"));
 $("variantDenoiseBtn").addEventListener("click", () => applyVariant("denoised"));
 
-// Keeps the hidden audio overlay (see applyVariant's previewOnly branch) in
-// lockstep with the visible video whenever the active variant is borrowing
-// the plain video's picture instead of having its own.
-//
-// Two independently-decoded elements drift apart continuously, not just
-// occasionally — a loose/infrequent check (previously: every 4s, only past
-// 1.5s off) left them audibly out of sync between checks. But correcting
-// with a hard currentTime seek every time (previously: on every timeupdate)
-// is audible as stutter, which is worse. The fix used by every serious
-// dual-track-sync implementation is to nudge the lagging/leading element's
-// *playbackRate* by a couple percent instead of seeking — inaudible, and it
-// converges drift back to zero within a second or two. Checked frequently
-// (every 300ms) since the correction itself makes no sound. A real jump
-// (e.g. resuming after a long pause) still gets a hard seek, since a few
-// percent of speed change can't close a multi-second gap quickly.
+// Drives the denoise comparison audio off the video's transport controls.
+// Primary path: the Web Audio graph (see setupDenoiseAudioGraph et al. above)
+// — started/stopped/re-seeked alongside the video, kept in sync continuously
+// by startDenoiseSyncLoop. Fallback path (only when decodeAudioData wasn't
+// available): the older dual-<audio>-element sync, weaker guarantees but
+// better than nothing.
 (function () {
   const video = $("previewVideo");
   const overlay = $("previewAudioOverlay");
-  const previewOnlyActive = () => !!variants?.[activeVariant]?.previewOnly;
-  let driftCheckTimer = null;
+  const graphMode = () => !!(denoiseAudioGraph && variants?.denoised?.previewOnly);
+  const overlayMode = () => !denoiseAudioGraph && !!variants?.[activeVariant]?.previewOnly;
+  let overlayDriftTimer = null;
 
-  function startDriftCheck() {
-    stopDriftCheck();
-    driftCheckTimer = setInterval(() => {
-      if (!previewOnlyActive() || video.paused) return;
-      const drift = overlay.currentTime - video.currentTime; // + = overlay ahead
+  function startOverlayDriftCheck() {
+    stopOverlayDriftCheck();
+    overlayDriftTimer = setInterval(() => {
+      if (!overlayMode() || video.paused) return;
+      const drift = overlay.currentTime - video.currentTime;
       if (Math.abs(drift) > 1.5) {
         overlay.currentTime = video.currentTime;
         overlay.playbackRate = 1;
@@ -1611,23 +1714,30 @@ $("variantDenoiseBtn").addEventListener("click", () => applyVariant("denoised"))
       }
     }, 300);
   }
-  function stopDriftCheck() {
-    if (driftCheckTimer) { clearInterval(driftCheckTimer); driftCheckTimer = null; }
+  function stopOverlayDriftCheck() {
+    if (overlayDriftTimer) { clearInterval(overlayDriftTimer); overlayDriftTimer = null; }
     overlay.playbackRate = 1;
   }
 
   video.addEventListener("play", () => {
-    if (!previewOnlyActive()) return;
-    overlay.currentTime = video.currentTime;
-    overlay.play().catch(() => {});
-    startDriftCheck();
+    if (graphMode()) {
+      startDenoiseSource(video.currentTime);
+      startDenoiseSyncLoop();
+    } else if (overlayMode()) {
+      overlay.currentTime = video.currentTime;
+      overlay.play().catch(() => {});
+      startOverlayDriftCheck();
+    }
   });
   video.addEventListener("pause", () => {
-    if (previewOnlyActive()) overlay.pause();
-    stopDriftCheck();
+    stopDenoiseSyncLoop();
+    stopDenoiseSource();
+    if (overlayMode()) overlay.pause();
+    stopOverlayDriftCheck();
   });
   video.addEventListener("seeking", () => {
-    if (previewOnlyActive()) { overlay.currentTime = video.currentTime; overlay.playbackRate = 1; }
+    if (graphMode() && !video.paused) startDenoiseSource(video.currentTime);
+    if (overlayMode()) { overlay.currentTime = video.currentTime; overlay.playbackRate = 1; }
   });
 })();
 
