@@ -472,6 +472,7 @@ footer a:hover{color:var(--gold-bright)}
     <div class="panel panel-done">
       <div class="card">
         <video class="preview" id="previewVideo" controls playsinline hidden></video>
+        <audio id="previewAudioOverlay" hidden></audio>
         <div class="variant-switch" id="variantSwitch" hidden>
           <button type="button" class="variant-btn active" id="variantPlainBtn" data-variant="plain" aria-pressed="true">原始版</button>
           <button type="button" class="variant-btn" id="variantDenoiseBtn" data-variant="denoised" aria-pressed="false">降噪版</button>
@@ -1051,7 +1052,10 @@ function clearPreviousOutput() {
   $("logToggle").textContent = "顯示詳細記錄";
   $("previewVideo").hidden = true;
   $("previewVideo").src = "";
+  $("previewVideo").muted = false;
   $("previewVideo").classList.remove("audio-only");
+  $("previewAudioOverlay").pause();
+  $("previewAudioOverlay").src = "";
   $("warnBox").hidden = true;
   $("loudnessChart").hidden = true;
   $("chartToggle").hidden = true;
@@ -1073,9 +1077,29 @@ function applyVariant(key) {
   outputFileName = v.fileName;
   lastReport = v.report;
 
-  $("previewVideo").src = v.url;
-  $("previewVideo").hidden = false;
-  $("previewVideo").classList.toggle("audio-only", !v.hasVideo);
+  const video = $("previewVideo");
+  const overlay = $("previewAudioOverlay");
+
+  if (v.previewOnly) {
+    // No picture of its own (see buildVariant) — keep showing the plain
+    // variant's already-loaded video for the picture, unchanged, and swap
+    // in this variant's audio through a synced hidden <audio> instead of
+    // loading a second full video just to compare a few seconds of sound.
+    const plainURL = variants.plain?.url;
+    if (plainURL && video.src !== plainURL) video.src = plainURL;
+    video.hidden = false;
+    video.classList.remove("audio-only");
+    video.muted = true;
+    overlay.src = v.url;
+    overlay.currentTime = video.currentTime || 0;
+    if (!video.paused) overlay.play().catch(() => {});
+  } else {
+    overlay.pause();
+    video.muted = false;
+    video.src = v.url;
+    video.hidden = false;
+    video.classList.toggle("audio-only", !v.hasVideo);
+  }
 
   $("statLufsAfter").textContent = v.statLufsAfter;
   $("statTpAfter").textContent = v.statTpAfter;
@@ -1306,7 +1330,7 @@ async function startProcessing() {
       if (renderVideo) {
         note += "。影像已原封不動保留，未重新編碼。";
       } else if (output.hasVideo) {
-        note += "。此為聲音比較用預覽，不含畫面；下載時會另外產生包含畫面的完整影片。";
+        note += "。畫面沿用原始版預覽，這裡只是比較聲音；下載時才會產生這個版本專屬的完整影片。";
       } else {
         note += "。輸出為無損 24-bit WAV。";
       }
@@ -1550,6 +1574,27 @@ $("chartToggle").addEventListener("click", () => {
 });
 $("variantPlainBtn").addEventListener("click", () => applyVariant("plain"));
 $("variantDenoiseBtn").addEventListener("click", () => applyVariant("denoised"));
+
+// Keeps the hidden audio overlay (see applyVariant's previewOnly branch) in
+// lockstep with the visible video whenever the active variant is borrowing
+// the plain video's picture instead of having its own.
+(function () {
+  const video = $("previewVideo");
+  const overlay = $("previewAudioOverlay");
+  const previewOnlyActive = () => !!variants?.[activeVariant]?.previewOnly;
+  video.addEventListener("play", () => {
+    if (!previewOnlyActive()) return;
+    overlay.currentTime = video.currentTime;
+    overlay.play().catch(() => {});
+  });
+  video.addEventListener("pause", () => { if (previewOnlyActive()) overlay.pause(); });
+  video.addEventListener("seeking", () => { if (previewOnlyActive()) overlay.currentTime = video.currentTime; });
+  video.addEventListener("timeupdate", () => {
+    if (previewOnlyActive() && Math.abs(overlay.currentTime - video.currentTime) > 0.3) {
+      overlay.currentTime = video.currentTime;
+    }
+  });
+})();
 
 /* ── 主題切換 ───────────────────── */
 (function () {
