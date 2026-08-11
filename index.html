@@ -1014,6 +1014,10 @@ let cancelled = false;
 // them, so downloadOutput()/downloadReport() need no knowledge of variants at all.
 let variants = null;
 let activeVariant = "plain";
+// Set only when the active "denoised" variant is the lightweight audio-only
+// comparison preview (see buildVariant's renderVideo param) — calling it
+// renders the real, full video on demand, right before it's downloaded.
+let rebuildFullDenoisedVariant = null;
 
 function setState(state) { app.dataset.state = state; }
 
@@ -1037,6 +1041,7 @@ function clearPreviousOutput() {
   }
   variants = null;
   activeVariant = "plain";
+  rebuildFullDenoisedVariant = null;
   outputURL = null;
   outputBlob = null;
   outputFileName = "";
@@ -1264,20 +1269,32 @@ async function startProcessing() {
       : [{ key: "plain", denoise: false, label: "" }];
 
     const mime = output.container === "wav" ? "audio/wav" : output.container === "webm" ? "video/webm" : "video/mp4";
-    const builtVariants = {};
 
-    for (const pass of passes) {
+    // Rendering a second full video (video+audio, byte-identical stream copy
+    // and all) just to compare denoise means holding two complete videos'
+    // worth of decoded bytes in memory at once — exactly what was crashing
+    // the preview on a real phone. The comparison itself only needs audio,
+    // so for a file that has video, the "denoised" pass is rendered without
+    // the video stream at all (a few hundred KB instead of tens/hundreds of
+    // MB) purely for A/B listening; the real, full video is only ever built
+    // — via rebuildFullDenoisedVariant below — at the moment it's actually
+    // wanted for download.
+    async function buildVariant(pass, renderVideo) {
       const result = await engine.renderAndVerify(
         plan, preset.i, preset.tp, currentInfo.dualMono,
-        output.container, output.audioCodec, output.audioArgs, output.hasVideo,
+        output.container, output.audioCodec, output.audioArgs, renderVideo,
         (stage) => { progressStageLabel = stage + pass.label; }, pass.denoise
       );
-      if (cancelled) return;
+      if (cancelled) return null;
 
       // Pass the Uint8Array itself, not .buffer — a typed array's buffer can be
       // larger than the array's own view (over-allocated by whatever produced
       // it), and Blob([arraybuffer]) would then include that extra tail.
       // Blob([typedarray]) only ever reads the array's own byteOffset..length.
+      // The container/mime stays what it always was (mp4/webm/wav) even when
+      // this particular render has no video track — it's still genuinely
+      // that container, just without a picture, and browsers handle an
+      // audio-only video/mp4 or video/webm blob fine for local playback.
       const blob = new Blob([result.data], { type: mime });
       const url = URL.createObjectURL(blob);
       const suffix = pass.denoise ? "_loudnorm_denoised" : "_loudnorm";
@@ -1286,7 +1303,13 @@ async function startProcessing() {
       const gainDirection = plan.gainDb >= 0 ? "提升" : "降低";
       let note = `${gainDirection} ${Math.abs(plan.gainDb).toFixed(1)} dB`;
       note += plan.useLimiter ? "，其中部分經過真實峰值限幅器處理" : "（純增益，不改變音質）";
-      note += output.hasVideo ? "。影像已原封不動保留，未重新編碼。" : "。輸出為無損 24-bit WAV。";
+      if (renderVideo) {
+        note += "。影像已原封不動保留，未重新編碼。";
+      } else if (output.hasVideo) {
+        note += "。此為聲音比較用預覽，不含畫面；下載時會另外產生包含畫面的完整影片。";
+      } else {
+        note += "。輸出為無損 24-bit WAV。";
+      }
       if (isSurroundLayout(currentInfo.channelLayout)) {
         note += `依 ITU-R BS.1770 對 ${currentInfo.channelLayout} 環繞聲道加權量測，非只取前左右聲道。`;
       }
@@ -1333,21 +1356,34 @@ async function startProcessing() {
           denoiseUsed: pass.denoise,
           peakCorrections: result.corrections,
           shortfallDb: plan.shortfallDb ? Number(plan.shortfallDb.toFixed(3)) : 0,
-          videoStreamCopied: output.hasVideo,
+          videoStreamCopied: renderVideo,
           outputCodec: output.audioCodec,
         },
         outputFile: fileName,
       };
 
-      builtVariants[pass.key] = {
+      return {
         blob, url, fileName, note, warnText, chartPoints,
         targetI: preset.i,
-        hasVideo: output.hasVideo,
+        hasVideo: renderVideo,
+        previewOnly: output.hasVideo && !renderVideo,
         statLufsAfter: result.finalStats.i !== null ? `${result.finalStats.i.toFixed(1)} LUFS` : "—",
         statTpAfter: result.finalStats.tp !== null ? `${result.finalStats.tp.toFixed(1)} dBTP` : "—",
         report,
       };
     }
+
+    const builtVariants = {};
+    for (const pass of passes) {
+      const renderVideo = pass.key === "plain" ? output.hasVideo : false;
+      const variant = await buildVariant(pass, renderVideo);
+      if (!variant) return; // cancelled mid-pass
+      builtVariants[pass.key] = variant;
+    }
+
+    rebuildFullDenoisedVariant = (compare && output.hasVideo)
+      ? () => buildVariant({ key: "denoised", denoise: true, label: "（降噪版，完整影片）" }, true)
+      : null;
 
     renderProgress(1, progressTotalSeconds);
     progressStageLabel = "完成";
@@ -1446,8 +1482,34 @@ async function shareOrDownloadBlob(blob, filename) {
   }
 }
 
-function downloadOutput() {
+async function downloadOutput() {
   if (!outputBlob) return;
+
+  // The active variant might just be the lightweight audio-only comparison
+  // preview (see buildVariant) — build the real, full video now, only for
+  // the one the user actually chose to keep.
+  if (variants?.[activeVariant]?.previewOnly && rebuildFullDenoisedVariant) {
+    const btn = $("downloadBtn");
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "產生完整影片中…";
+    try {
+      const full = await rebuildFullDenoisedVariant();
+      if (!full) return; // job was cancelled mid-rebuild
+      URL.revokeObjectURL(variants[activeVariant].url);
+      variants[activeVariant] = full;
+      rebuildFullDenoisedVariant = null; // already upgraded — no need to redo this
+      applyVariant(activeVariant);
+    } catch (e) {
+      console.error("full-video rebuild for download failed:", e);
+      showError("產生完整影片時發生錯誤，請再試一次。");
+      return;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+
   return shareOrDownloadBlob(outputBlob, outputFileName);
 }
 
