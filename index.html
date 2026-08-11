@@ -234,6 +234,14 @@ select:focus{outline:none;border-color:var(--gold)}
 .checkbox-field .checkbox-text .label{font-size:var(--fs-md);color:var(--ivory);font-weight:500}
 .checkbox-field .checkbox-text .hint{font-size:var(--fs-xs);color:var(--muted);line-height:1.6}
 
+.variant-switch{display:flex;gap:8px;margin-bottom:12px}
+.variant-btn{
+  flex:1;padding:9px 12px;border:1px solid var(--line);background:var(--surface-inset);
+  color:var(--muted-bright);font-family:inherit;font-size:var(--fs-sm);font-weight:500;
+  border-radius:var(--radius-pill);cursor:pointer;transition:background .2s,color .2s,border-color .2s;
+}
+.variant-btn.active{background:var(--gold);color:var(--bg);border-color:var(--gold)}
+
 .actions{display:flex;gap:10px;margin-top:14px}
 .actions .btn{flex:1}
 
@@ -317,6 +325,7 @@ video.preview{
   width:100%;max-height:170px;object-fit:contain;
   border-radius:var(--radius-md);margin-bottom:10px;background:#000;display:block;
 }
+video.preview.audio-only{max-height:54px;background:transparent}
 .warn-box{
   background:var(--danger-bg);border:1px solid var(--danger);border-radius:var(--radius-md);
   padding:10px 12px;font-size:var(--fs-sm);color:var(--danger);line-height:1.6;margin-bottom:10px;
@@ -425,8 +434,8 @@ footer a:hover{color:var(--gold-bright)}
         <label class="checkbox-field" for="denoiseToggle">
           <input type="checkbox" id="denoiseToggle">
           <span class="checkbox-text">
-            <span class="label">降噪（選用）</span>
-            <span class="hint">適合有底噪、電流聲、風聲的素材。只做保守處理，盡量避免聲音變悶；很吵的雜訊不會完全消失。</span>
+            <span class="label">降噪比較（選用）</span>
+            <span class="hint">處理完會同時保留原始與降噪兩個版本，可以先 A/B 聽過再選要下載哪一個。只做保守處理，盡量避免聲音變悶；處理時間會變長。</span>
           </span>
         </label>
 
@@ -463,6 +472,10 @@ footer a:hover{color:var(--gold-bright)}
     <div class="panel panel-done">
       <div class="card">
         <video class="preview" id="previewVideo" controls playsinline hidden></video>
+        <div class="variant-switch" id="variantSwitch" hidden>
+          <button type="button" class="variant-btn active" id="variantPlainBtn" data-variant="plain" aria-pressed="true">原始版</button>
+          <button type="button" class="variant-btn" id="variantDenoiseBtn" data-variant="denoised" aria-pressed="false">降噪版</button>
+        </div>
         <div class="warn-box" id="warnBox" hidden></div>
         <div class="stats">
           <div class="stat-box">
@@ -994,6 +1007,13 @@ let outputBlob = null;
 let outputFileName = "";
 let lastReport = null;
 let cancelled = false;
+// When "降噪比較" is on, both a plain and a denoised render are kept side by
+// side so the user can A/B them before choosing which to download. outputURL/
+// outputBlob/outputFileName/lastReport above always mirror whichever one of
+// these is currently active — applyVariant() is the only thing that reassigns
+// them, so downloadOutput()/downloadReport() need no knowledge of variants at all.
+let variants = null;
+let activeVariant = "plain";
 
 function setState(state) { app.dataset.state = state; }
 
@@ -1010,7 +1030,14 @@ function appendLog(line) {
 
 /** 清掉上一次處理留下的畫面與輸出,但保留已載入的檔案與已探測的資訊。 */
 function clearPreviousOutput() {
-  if (outputURL) { URL.revokeObjectURL(outputURL); outputURL = null; }
+  if (variants) {
+    for (const key of Object.keys(variants)) {
+      if (variants[key]?.url) URL.revokeObjectURL(variants[key].url);
+    }
+  }
+  variants = null;
+  activeVariant = "plain";
+  outputURL = null;
   outputBlob = null;
   outputFileName = "";
   lastReport = null;
@@ -1019,10 +1046,46 @@ function clearPreviousOutput() {
   $("logToggle").textContent = "顯示詳細記錄";
   $("previewVideo").hidden = true;
   $("previewVideo").src = "";
+  $("previewVideo").classList.remove("audio-only");
   $("warnBox").hidden = true;
   $("loudnessChart").hidden = true;
   $("chartToggle").hidden = true;
   $("chartToggle").textContent = "顯示響度曲線";
+  $("variantSwitch").hidden = true;
+  $("variantPlainBtn").classList.add("active");
+  $("variantPlainBtn").setAttribute("aria-pressed", "true");
+  $("variantDenoiseBtn").classList.remove("active");
+  $("variantDenoiseBtn").setAttribute("aria-pressed", "false");
+}
+
+/** 把某個版本(plain/denoised)的結果套用到畫面上——預覽、統計數字、備註、圖表、下載目標全部一起換。 */
+function applyVariant(key) {
+  const v = variants[key];
+  if (!v) return;
+  activeVariant = key;
+  outputURL = v.url;
+  outputBlob = v.blob;
+  outputFileName = v.fileName;
+  lastReport = v.report;
+
+  $("previewVideo").src = v.url;
+  $("previewVideo").hidden = false;
+  $("previewVideo").classList.toggle("audio-only", !v.hasVideo);
+
+  $("statLufsAfter").textContent = v.statLufsAfter;
+  $("statTpAfter").textContent = v.statTpAfter;
+  $("resultNote").textContent = v.note;
+
+  if (v.warnText) { $("warnBox").hidden = false; $("warnBox").textContent = v.warnText; }
+  else { $("warnBox").hidden = true; }
+
+  renderLoudnessChart(v.chartPoints, v.targetI);
+
+  document.querySelectorAll(".variant-btn").forEach((btn) => {
+    const isActive = btn.dataset.variant === key;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-pressed", String(isActive));
+  });
 }
 
 function resetToEmpty() {
@@ -1191,100 +1254,109 @@ async function startProcessing() {
     }
 
     const plan = engine.plan(src.i, src.tp, preset.i, preset.tp);
-    const denoise = $("denoiseToggle").checked;
+    // "降噪比較" doesn't pre-commit to an answer — it renders both a plain and
+    // a denoised pass (each independently verified) and lets the user A/B them
+    // on the done screen before picking which one to keep. Unchecked, this is
+    // exactly the single-pass flow that existed before the toggle.
+    const compare = $("denoiseToggle").checked;
+    const passes = compare
+      ? [{ key: "plain", denoise: false, label: "" }, { key: "denoised", denoise: true, label: "（降噪版）" }]
+      : [{ key: "plain", denoise: false, label: "" }];
 
-    const result = await engine.renderAndVerify(
-      plan, preset.i, preset.tp, currentInfo.dualMono,
-      output.container, output.audioCodec, output.audioArgs, output.hasVideo,
-      (stage) => { progressStageLabel = stage; }, denoise
-    );
-    if (cancelled) return;
+    const mime = output.container === "wav" ? "audio/wav" : output.container === "webm" ? "video/webm" : "video/mp4";
+    const builtVariants = {};
+
+    for (const pass of passes) {
+      const result = await engine.renderAndVerify(
+        plan, preset.i, preset.tp, currentInfo.dualMono,
+        output.container, output.audioCodec, output.audioArgs, output.hasVideo,
+        (stage) => { progressStageLabel = stage + pass.label; }, pass.denoise
+      );
+      if (cancelled) return;
+
+      // Pass the Uint8Array itself, not .buffer — a typed array's buffer can be
+      // larger than the array's own view (over-allocated by whatever produced
+      // it), and Blob([arraybuffer]) would then include that extra tail.
+      // Blob([typedarray]) only ever reads the array's own byteOffset..length.
+      const blob = new Blob([result.data], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const suffix = pass.denoise ? "_loudnorm_denoised" : "_loudnorm";
+      const fileName = currentFile.name.replace(/\.[^.]+$/, "") + suffix + "." + output.container;
+
+      const gainDirection = plan.gainDb >= 0 ? "提升" : "降低";
+      let note = `${gainDirection} ${Math.abs(plan.gainDb).toFixed(1)} dB`;
+      note += plan.useLimiter ? "，其中部分經過真實峰值限幅器處理" : "（純增益，不改變音質）";
+      note += output.hasVideo ? "。影像已原封不動保留，未重新編碼。" : "。輸出為無損 24-bit WAV。";
+      if (isSurroundLayout(currentInfo.channelLayout)) {
+        note += `依 ITU-R BS.1770 對 ${currentInfo.channelLayout} 環繞聲道加權量測，非只取前左右聲道。`;
+      }
+      if (pass.denoise) note += "已套用保守降噪。";
+
+      let warnText = null;
+      if (plan.shortfallDb > 0.5) {
+        warnText = `這段素材峰值偏高（可能有爆音或碰撞聲），完全達標需要更多限幅，因此成品會比目標小聲約 ${plan.shortfallDb.toFixed(1)} dB，避免聲音被壓得太扁。`;
+      }
+
+      // Optional and purely informational — never let a failure here take
+      // down a job that has otherwise already succeeded.
+      let chartPoints = [];
+      try {
+        progressStageLabel = "分析響度變化" + pass.label;
+        chartPoints = await engine.measureTimeSeries(result.outputName, currentInfo.dualMono);
+      } catch (e) {
+        console.error("loudness chart failed:", e);
+      }
+
+      const report = {
+        generatedBy: "LoudMaster",
+        generatedAt: new Date().toISOString(),
+        sourceFile: currentFile.name,
+        sourceInfo: {
+          durationSeconds: currentInfo.duration,
+          videoCodec: currentInfo.videoCodec,
+          resolution: currentInfo.hasVideo ? `${currentInfo.width}x${currentInfo.height}` : null,
+          audioCodec: currentInfo.audioCodec,
+          sampleRateHz: currentInfo.sampleRate,
+          channelLayout: currentInfo.channelLayout,
+        },
+        target: { label: preset.label, integratedLufs: preset.i, truePeakDbtp: preset.tp },
+        measured: {
+          beforeIntegratedLufs: src.i,
+          beforeTruePeakDbtp: src.tp,
+          afterIntegratedLufs: result.finalStats.i,
+          afterTruePeakDbtp: result.finalStats.tp,
+        },
+        processing: {
+          gainDb: Number(plan.gainDb.toFixed(3)),
+          limiterUsed: plan.useLimiter,
+          limitingDb: Number((plan.limitingDb || 0).toFixed(3)),
+          denoiseUsed: pass.denoise,
+          peakCorrections: result.corrections,
+          shortfallDb: plan.shortfallDb ? Number(plan.shortfallDb.toFixed(3)) : 0,
+          videoStreamCopied: output.hasVideo,
+          outputCodec: output.audioCodec,
+        },
+        outputFile: fileName,
+      };
+
+      builtVariants[pass.key] = {
+        blob, url, fileName, note, warnText, chartPoints,
+        targetI: preset.i,
+        hasVideo: output.hasVideo,
+        statLufsAfter: result.finalStats.i !== null ? `${result.finalStats.i.toFixed(1)} LUFS` : "—",
+        statTpAfter: result.finalStats.tp !== null ? `${result.finalStats.tp.toFixed(1)} dBTP` : "—",
+        report,
+      };
+    }
 
     renderProgress(1, progressTotalSeconds);
     progressStageLabel = "完成";
 
-    const mime = output.container === "wav" ? "audio/wav" : output.container === "webm" ? "video/webm" : "video/mp4";
-    // Pass the Uint8Array itself, not .buffer — a typed array's buffer can be
-    // larger than the array's own view (over-allocated by whatever produced
-    // it), and Blob([arraybuffer]) would then include that extra tail.
-    // Blob([typedarray]) only ever reads the array's own byteOffset..length.
-    const blob = new Blob([result.data], { type: mime });
-    outputURL = URL.createObjectURL(blob);
-    outputBlob = blob;
-    outputFileName = currentFile.name.replace(/\.[^.]+$/, "") + "_loudnorm." + output.container;
-
-    if (output.hasVideo) {
-      $("previewVideo").src = outputURL;
-      $("previewVideo").hidden = false;
-    } else {
-      $("previewVideo").hidden = true;
-    }
-
+    variants = builtVariants;
     $("statLufsBefore").textContent = `${src.i.toFixed(1)} LUFS`;
-    $("statLufsAfter").textContent = result.finalStats.i !== null ? `${result.finalStats.i.toFixed(1)} LUFS` : "—";
     $("statTpBefore").textContent = src.tp !== null ? `${src.tp.toFixed(1)} dBTP` : "—";
-    $("statTpAfter").textContent = result.finalStats.tp !== null ? `${result.finalStats.tp.toFixed(1)} dBTP` : "—";
-
-    const gainDirection = plan.gainDb >= 0 ? "提升" : "降低";
-    let note = `${gainDirection} ${Math.abs(plan.gainDb).toFixed(1)} dB`;
-    note += plan.useLimiter ? "，其中部分經過真實峰值限幅器處理" : "（純增益，不改變音質）";
-    note += output.hasVideo ? "。影像已原封不動保留，未重新編碼。" : "。輸出為無損 24-bit WAV。";
-    if (isSurroundLayout(currentInfo.channelLayout)) {
-      note += `依 ITU-R BS.1770 對 ${currentInfo.channelLayout} 環繞聲道加權量測，非只取前左右聲道。`;
-    }
-    if (denoise) note += "已套用保守降噪。";
-    $("resultNote").textContent = note;
-
-    if (plan.shortfallDb > 0.5) {
-      $("warnBox").hidden = false;
-      $("warnBox").textContent = `這段素材峰值偏高（可能有爆音或碰撞聲），完全達標需要更多限幅，因此成品會比目標小聲約 ${plan.shortfallDb.toFixed(1)} dB，避免聲音被壓得太扁。`;
-    } else {
-      $("warnBox").hidden = true;
-    }
-
-    // Optional and purely informational — never let a failure here take
-    // down a job that has otherwise already succeeded.
-    try {
-      progressStageLabel = "分析響度變化";
-      const points = await engine.measureTimeSeries(result.outputName, currentInfo.dualMono);
-      renderLoudnessChart(points, preset.i);
-    } catch (e) {
-      console.error("loudness chart failed:", e);
-      $("chartToggle").hidden = true;
-      $("loudnessChart").hidden = true;
-    }
-
-    lastReport = {
-      generatedBy: "LoudMaster",
-      generatedAt: new Date().toISOString(),
-      sourceFile: currentFile.name,
-      sourceInfo: {
-        durationSeconds: currentInfo.duration,
-        videoCodec: currentInfo.videoCodec,
-        resolution: currentInfo.hasVideo ? `${currentInfo.width}x${currentInfo.height}` : null,
-        audioCodec: currentInfo.audioCodec,
-        sampleRateHz: currentInfo.sampleRate,
-        channelLayout: currentInfo.channelLayout,
-      },
-      target: { label: preset.label, integratedLufs: preset.i, truePeakDbtp: preset.tp },
-      measured: {
-        beforeIntegratedLufs: src.i,
-        beforeTruePeakDbtp: src.tp,
-        afterIntegratedLufs: result.finalStats.i,
-        afterTruePeakDbtp: result.finalStats.tp,
-      },
-      processing: {
-        gainDb: Number(plan.gainDb.toFixed(3)),
-        limiterUsed: plan.useLimiter,
-        limitingDb: Number((plan.limitingDb || 0).toFixed(3)),
-        denoiseUsed: denoise,
-        peakCorrections: result.corrections,
-        shortfallDb: plan.shortfallDb ? Number(plan.shortfallDb.toFixed(3)) : 0,
-        videoStreamCopied: output.hasVideo,
-        outputCodec: output.audioCodec,
-      },
-      outputFile: outputFileName,
-    };
+    $("variantSwitch").hidden = !compare;
+    applyVariant("plain");
 
     setState("done");
   } catch (e) {
@@ -1390,6 +1462,8 @@ $("chartToggle").addEventListener("click", () => {
   $("loudnessChart").hidden = !show;
   $("chartToggle").textContent = show ? "隱藏響度曲線" : "顯示響度曲線";
 });
+$("variantPlainBtn").addEventListener("click", () => applyVariant("plain"));
+$("variantDenoiseBtn").addEventListener("click", () => applyVariant("denoised"));
 
 /* ── 主題切換 ───────────────────── */
 (function () {
