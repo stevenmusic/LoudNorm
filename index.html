@@ -357,6 +357,21 @@ footer a:hover{color:var(--gold-bright)}
   .card{padding:26px 18px}
   .actions{flex-direction:column}
 }
+
+/* ── 斷點:手機(預設) / 平板 / 桌面 ─────────────────
+   卡片本身的排版在所有尺寸都成立(單欄、flex-wrap),這裡只放寬
+   容器寬度與留白,避免手機版的卡片被直接拉大貼在大螢幕上。 */
+@media (min-width:768px){
+  main{padding:40px 32px}
+  .stage{max-width:620px}
+  .empty-card{max-width:400px;padding:34px 36px}
+}
+@media (min-width:1200px){
+  main{padding:56px 32px}
+  .stage{max-width:680px}
+  .empty-card{max-width:440px;padding:38px 40px}
+  .card{padding:24px 28px}
+}
 </style>
 </head>
 <body>
@@ -379,13 +394,13 @@ footer a:hover{color:var(--gold-bright)}
         <div class="mark" aria-hidden="true">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13m0-13 5 5m-5-5-5 5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
         </div>
-        <p class="empty-title">點擊這裡載入影片或音樂,開始使用</p>
+        <p class="empty-title">點擊這裡載入影片或音樂檔案</p>
         <p class="empty-sub">支援 MP4 / MOV / WebM / MP3 / WAV 等常見格式</p>
         <a href="help.html" class="link-btn" id="learnMoreLink">或先看看它是怎麼運作的 →</a>
       </div>
       <p class="privacy-note">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V6z"/></svg>
-        全程在你的瀏覽器裡處理,檔案不會上傳到任何伺服器
+        全程在瀏覽器裡處理,檔案不會上傳到伺服器
       </p>
       <div class="engine-load" id="engineLoad">
         <div class="engine-load-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="處理引擎下載進度"><div class="engine-load-fill" id="engineLoadFill"></div></div>
@@ -436,7 +451,7 @@ footer a:hover{color:var(--gold-bright)}
           <input type="checkbox" id="denoiseToggle">
           <span class="checkbox-text">
             <span class="label">降噪比較（選用）</span>
-            <span class="hint">處理完會同時保留原始與降噪兩個版本，可以先 A/B 聽過再選要下載哪一個。只做保守處理，盡量避免聲音變悶；處理時間會變長。</span>
+            <span class="hint">會保留原始與降噪兩版，可先 A/B 比較再決定下載哪個；降噪偏保守、不易變悶，但處理時間較長。</span>
           </span>
         </label>
 
