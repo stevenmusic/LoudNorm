@@ -1388,14 +1388,25 @@ $("customLufs").addEventListener("input", updatePresetHint);
 $("customTp").addEventListener("input", updatePresetHint);
 $("chooseAnother").addEventListener("click", resetToEmpty);
 $("startBtn").addEventListener("click", startProcessing);
+// Above this, a data: URL (see below) would mean holding a ~4/3-larger
+// base64 string in memory on top of the blob itself — fine for a typical
+// clip, risky for a huge one. Past this size just accept the (rarer at that
+// point) blob-URL risk rather than the certain cost of encoding it all.
+const DATA_URL_FALLBACK_MAX_BYTES = 200 * 1024 * 1024;
+
 /**
  * iOS Safari does not reliably support `<a href="blob:..." download>` —
  * tapping it can make Safari try to navigate to the blob URL as if it were
  * a page instead of saving it, which fails with "WebKitBlobResource error 1"
- * for content it doesn't know how to display (exactly what was reported).
- * Where the Web Share API can share a File, that's the reliable path on iOS
- * (native share sheet → Save Video / Save to Files). Everywhere else, the
- * classic temporary-anchor blob download still works fine.
+ * for content it doesn't know how to display. Where the Web Share API can
+ * share a File, that's the primary path on iOS (native share sheet → Save
+ * Video / Save to Files) — but share() can still fail for reasons other than
+ * the user cancelling (e.g. it was seen failing here specifically holding two
+ * full A/B render variants in memory at once, likely tipping iOS's internal
+ * memory/resource limits for handing a file to the share sheet). For exactly
+ * that case the anchor fallback needs to not be the same blob-URL trick that
+ * has this failure mode in the first place — a data: URL sidesteps it
+ * entirely, since it's inline rather than a separately-fetched resource.
  */
 async function shareOrDownloadBlob(blob, filename) {
   const file = new File([blob], filename, { type: blob.type });
@@ -1410,16 +1421,29 @@ async function shareOrDownloadBlob(blob, filename) {
     }
   }
 
-  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
   a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  // Only revoke this one-off URL, never outputURL — that one is still bound
-  // to the visible <video> preview / the button's next click.
-  setTimeout(() => URL.revokeObjectURL(url), 30000);
+
+  if (blob.size <= DATA_URL_FALLBACK_MAX_BYTES) {
+    a.href = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error || new Error("讀取檔案失敗"));
+      reader.readAsDataURL(blob);
+    });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } else {
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Only revoke this one-off URL, never outputURL — that one is still bound
+    // to the visible <video> preview / the button's next click.
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
 }
 
 function downloadOutput() {
