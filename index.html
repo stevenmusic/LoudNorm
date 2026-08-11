@@ -1022,26 +1022,26 @@ let rebuildFullDenoisedVariant = null;
 
 /**
  * Drives the denoised-preview audio while it's just borrowing the plain
- * video's picture (see buildVariant's previewOnly). "plain" is always heard
- * through the video's own muxed audio track — perfectly synced by
- * definition, since one media element decodes both at once. Getting the
- * *denoised* comparison audio that same guarantee isn't possible by playing
- * a second, independently-decoded <audio> element in parallel — two
- * separately-clocked elements drift against each other continuously, and
- * every attempt at fixing that live (seeking on drift, then easing the
- * seek threshold) traded stutter for audible desync or back again.
+ * video's picture (see buildVariant's previewOnly). Two independently-
+ * decoded elements (the video's own audio track vs. a separate <audio>
+ * overlay) never share a clock, so no amount of tuning a seek-based or
+ * playbackRate-based correction can fully fix both stutter and drift —
+ * that whole approach is out. Web Audio's AudioContext gives everything
+ * scheduled on it one shared clock instead, which is what this uses: the
+ * denoised track is decoded once into an AudioBuffer and played through a
+ * BufferSourceNode against that clock, continuously, in the background,
+ * regardless of which tab is showing.
  *
- * The actual fix is to stop using a second media element at all. Web Audio's
- * AudioContext gives every node it schedules the *same* clock, so instead of
- * syncing two independent playback engines after the fact, the denoised
- * track is decoded once into an AudioBuffer and played through a
- * BufferSourceNode scheduled against that one shared clock — switching
- * tabs is then just muting the video and moving a GainNode from 0 to 1
- * (and back), with zero re-seek, zero pause, and no drift to correct in the
- * first place. It keeps running *silently* in the background even while
- * "plain" is showing, so a switch never has to start it from cold.
+ * Switching which one is audible also can't be left to the video element's
+ * own `.muted` — toggling that via JS doesn't reliably update what the
+ * *native* mute control shows or reacts to, so the video track routes
+ * through this same graph too (via createMediaElementSource, which hands
+ * control of its output to Web Audio instead of the element's own volume
+ * pipeline). Both "plain" and "denoised" then become nothing but a
+ * GainNode value each — flipping 0↔1 is instant, silent to switch, and
+ * there's no native mute UI in the loop to get out of sync with.
  */
-let denoiseAudioGraph = null; // { ctx, gain, buffer, source, startedAtCtxTime, startedAtOffset }
+let denoiseAudioGraph = null; // { ctx, gainPlain, gainDenoised, buffer, source, startedAtCtxTime, startedAtOffset }
 let denoiseSyncTimer = null;
 
 async function setupDenoiseAudioGraph() {
@@ -1050,12 +1050,23 @@ async function setupDenoiseAudioGraph() {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     const ctx = new Ctx();
+    // Decode first, touch nothing else yet — if this throws, the video
+    // element's own audio pipeline is untouched and the caller falls back
+    // to the old <audio>-overlay technique instead of going silent.
     const arrayBuffer = await variants.denoised.blob.arrayBuffer();
     const buffer = await ctx.decodeAudioData(arrayBuffer);
-    const gain = ctx.createGain();
-    gain.gain.value = 0;
-    gain.connect(ctx.destination);
-    denoiseAudioGraph = { ctx, gain, buffer, source: null, startedAtCtxTime: 0, startedAtOffset: 0 };
+
+    const video = $("previewVideo");
+    const videoSource = ctx.createMediaElementSource(video);
+    const gainPlain = ctx.createGain();
+    const gainDenoised = ctx.createGain();
+    videoSource.connect(gainPlain);
+    gainPlain.connect(ctx.destination);
+    gainDenoised.connect(ctx.destination);
+    gainPlain.gain.value = 1;
+    gainDenoised.gain.value = 0;
+
+    denoiseAudioGraph = { ctx, gainPlain, gainDenoised, buffer, source: null, startedAtCtxTime: 0, startedAtOffset: 0 };
   } catch (e) {
     console.error("denoise audio graph setup failed (falling back to plain-only playback):", e);
     denoiseAudioGraph = null;
@@ -1067,7 +1078,7 @@ function startDenoiseSource(offsetSeconds) {
   stopDenoiseSource();
   const source = denoiseAudioGraph.ctx.createBufferSource();
   source.buffer = denoiseAudioGraph.buffer;
-  source.connect(denoiseAudioGraph.gain);
+  source.connect(denoiseAudioGraph.gainDenoised);
   const safeOffset = Math.max(0, Math.min(offsetSeconds, denoiseAudioGraph.buffer.duration - 0.02));
   source.start(0, safeOffset);
   denoiseAudioGraph.source = source;
@@ -1181,15 +1192,19 @@ function applyVariant(key) {
   const overlay = $("previewAudioOverlay");
 
   if (v.previewOnly && denoiseAudioGraph) {
-    // The good path: no second video, no second media element — just mute
-    // the video (its own audio is "plain") and bring up the GainNode that's
-    // been silently playing the denoised track in sync all along.
+    // The good path: no second video, no second media element, and no
+    // reliance on the native mute control — the video's own audio and the
+    // denoised track are both just GainNode values on the same graph now.
+    // Never reassign .src to the same URL it's already showing: even
+    // assigning a media element's src to its own current value makes the
+    // browser reload the resource from scratch, which is what was resetting
+    // playback to 0:00 whenever this switched back to "plain".
     const plainURL = variants.plain?.url;
     if (plainURL && video.src !== plainURL) video.src = plainURL;
     video.hidden = false;
     video.classList.remove("audio-only");
-    video.muted = true;
-    denoiseAudioGraph.gain.gain.value = 1;
+    denoiseAudioGraph.gainPlain.gain.value = 0;
+    denoiseAudioGraph.gainDenoised.gain.value = 1;
   } else if (v.previewOnly) {
     // Fallback for a browser where decodeAudioData failed — best-effort
     // dual-media-element sync, same picture-reuse trick, weaker guarantees.
@@ -1202,10 +1217,13 @@ function applyVariant(key) {
     overlay.currentTime = video.currentTime || 0;
     if (!video.paused) overlay.play().catch(() => {});
   } else {
-    if (denoiseAudioGraph) denoiseAudioGraph.gain.gain.value = 0;
+    if (denoiseAudioGraph) {
+      denoiseAudioGraph.gainPlain.gain.value = 1;
+      denoiseAudioGraph.gainDenoised.gain.value = 0;
+    }
     overlay.pause();
     video.muted = false;
-    video.src = v.url;
+    if (video.src !== v.url) video.src = v.url;
     video.hidden = false;
     video.classList.toggle("audio-only", !v.hasVideo);
   }
