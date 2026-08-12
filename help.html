@@ -135,12 +135,35 @@ footer{
 }
 footer a{margin:0 8px}
 
+/* ══ 響應式斷點 ══════════════════════════════════════════════════
+   與 index.html 及其他三個專案共用同一組:
+     max-width: 900 / 600 / 380 / 340   max-height: 420   min-width: 900
+     pointer:coarse ×3                  prefers-reduced-motion
+   容器寬度原本用 1024 / 1400 兩階硬切,改成 clamp 一路平滑放寬,
+   兩端的值(820px / 880px)與原本相同,中間不再跳階。 */
 @media (max-width:600px){ section{padding:28px 0} main{padding:0 15px} }
-
-/* ── 斷點:平板 / 桌面 ───────────────────────────
-   內文本來就靠左、有固定行寬,大螢幕只需要放寬容器,不需要重排。 */
-@media (min-width:1024px){ main{max-width:820px;padding:0 24px} }
-@media (min-width:1400px){ main{max-width:880px} }
+@media (pointer:coarse){
+  .btn{height:44px;min-width:44px}
+}
+@media (pointer:coarse) and (max-height:420px){
+  .btn{height:36px}
+}
+@media (pointer:coarse) and (max-width:420px){
+  .btn{min-width:clamp(38px, 10.5vw, 44px)}
+}
+@media (max-height:420px){
+  header{padding:5px 10px;gap:4px 8px}
+  header h1{font-size:var(--fs-sm)}
+  .btn{padding:0 10px;height:28px;font-size:var(--fs-xs)}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms !important;animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;scroll-behavior:auto !important;
+  }
+}
+/* 平板/桌機:放寬容器。原本 1024 / 1400 兩階,收斂成單一 min-width:900,值取大螢幕那一階 */
+@media (min-width:900px){ main{max-width:880px;padding:0 24px} }
 </style>
 </head>
 <body>

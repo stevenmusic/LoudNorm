@@ -352,21 +352,49 @@ footer{
 footer a{color:var(--gold);text-decoration:none}
 footer a:hover{color:var(--gold-bright)}
 
-@media (max-width:480px){
-  .stats{grid-template-columns:1fr 1fr}
+/* ══ 響應式斷點 ══════════════════════════════════════════════════
+   與 ScrollScore / SightScore / HarmonyMap 共用同一組斷點,不要自己多開:
+     max-width: 900 / 600 / 380 / 340    max-height: 420    min-width: 900
+     pointer:coarse ×3                   prefers-reduced-motion
+   需要「隨尺寸連續變化」的東西一律用 clamp 算,不要為它新增斷點——
+   容器寬度與留白原本用 768 / 1200 兩階硬切,現在改成一路平滑放大,
+   兩端的值(手機 24px / 大螢幕 56px 等)與原本完全相同,中間不再有跳階。 */
+@media (max-width:600px){
   .card{padding:26px 18px}
   .actions{flex-direction:column}
 }
-
-/* ── 斷點:手機(預設) / 平板 / 桌面 ─────────────────
-   卡片本身的排版在所有尺寸都成立(單欄、flex-wrap),這裡只放寬
-   容器寬度與留白,避免手機版的卡片被直接拉大貼在大螢幕上。 */
-@media (min-width:768px){
-  main{padding:40px 32px}
-  .stage{max-width:620px}
-  .empty-card{max-width:400px;padding:34px 36px}
+/* 手機橫向 / 螢幕高度極矮:頂欄收扁,把高度讓給中間的卡片 */
+@media (max-height:420px){
+  header{padding:5px 10px;gap:4px 8px}
+  header h1{font-size:var(--fs-sm)}
+  .btn{padding:0 10px;height:28px;font-size:var(--fs-xs)}
+  main{padding:12px 16px}
 }
-@media (min-width:1200px){
+/* ── 觸控裝置:點擊目標放大 ── */
+@media (pointer:coarse){
+  .btn{height:44px;min-width:44px}
+}
+/* 手機橫向:高度吃緊,44px 會再吃掉寶貴的高度,取 36px 折衷。
+   必須放在 pointer:coarse 之後,否則會被上面的 44px 蓋掉 */
+@media (pointer:coarse) and (max-height:420px){
+  .btn{height:36px}
+}
+/* 觸控目標寬度連續縮放:320px 只放得下 38px(仍遠高於 WCAG 2.2 AA 2.5.8 要求的 24px,
+   而且高度維持 44px),400px 以上就回到 Apple HIG 建議的 44px */
+@media (pointer:coarse) and (max-width:420px){
+  .btn{min-width:clamp(38px, 10.5vw, 44px)}
+}
+/* ── 使用者在系統關掉動態效果時,一律不要有轉場與動畫 ── */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms !important;animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;scroll-behavior:auto !important;
+  }
+}
+/* ── 平板/桌機:放寬容器寬度與留白 ──────────────────────────
+   原本用 768 / 1200 兩階硬切,收斂成共用斷點的單一 min-width:900 階,
+   數值取原本大螢幕那一階。放在整份樣式表最後(與 ScrollScore 相同的排法) */
+@media (min-width:900px){
   main{padding:56px 32px}
   .stage{max-width:680px}
   .empty-card{max-width:440px;padding:38px 40px}
