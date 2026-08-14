@@ -103,7 +103,19 @@ header h1{
   font-weight:700;color:var(--gold);white-space:nowrap;
 }
 header h1 span{color:var(--ivory);font-weight:600}
+.header-left{display:flex;align-items:center;gap:6px;min-width:0}
 .header-right{display:flex;align-items:center;gap:8px}
+/* Hub 頁(stevenmusic.github.io)是後來才生的,工具頁原本沒有回首頁的路徑——
+   跟 ScrollScore/SightScore 用同一套安靜文字連結,不用 .btn 那套邊框樣式 */
+.home-link{
+  display:inline-flex;align-items:center;gap:4px;
+  color:var(--muted);font-size:var(--fs-md);text-decoration:none;
+  padding:8px 4px;border-radius:var(--radius-sm);transition:color .15s;white-space:nowrap;
+}
+.home-link:hover,.home-link:focus-visible{color:var(--gold-bright)}
+@media (max-width:600px){
+  .home-link .label{display:none}
+}
 
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:6px;line-height:1;
@@ -405,7 +417,12 @@ footer a:hover{color:var(--gold-bright)}
 <body>
 
 <header>
-  <h1>Loud<span>Master</span></h1>
+  <div class="header-left">
+    <a href="https://stevenmusic.github.io/" class="home-link" aria-label="回首頁" title="回首頁">
+      <span aria-hidden="true">←</span><span class="label">首頁</span>
+    </a>
+    <h1>Loud<span>Master</span></h1>
+  </div>
   <div class="header-right">
     <button class="btn icon" id="themeToggle" title="切換淺色 / 深色" aria-label="切換淺色或深色主題">◐</button>
     <a class="btn" href="help.html">說明</a>
