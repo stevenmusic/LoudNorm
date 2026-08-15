@@ -6,20 +6,21 @@
 <!-- 手機瀏覽器的網址列會吃這個顏色。切換淺色主題時 applyTheme() 會一起改,
      不然頁面變白了、上面那條還是黑的,看起來像沒對齊 -->
 <meta name="theme-color" content="#0C0A07">
-<title>LoudMaster — 影片音量一鍵調到 YouTube 標準</title>
-<meta name="description" content="直接在瀏覽器裡把影片或音樂調到 YouTube 標準響度,不破音、不改變畫質。不用安裝任何東西,檔案也不會上傳到伺服器。">
+<title data-i18n="meta_title">LoudMaster — 影片音量一鍵調到 YouTube 標準</title>
+<meta name="description" content="直接在瀏覽器裡把影片或音樂調到 YouTube 標準響度,不破音、不改變畫質。不用安裝任何東西,檔案也不會上傳到伺服器。" data-i18n-attr="content:meta_desc">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CjxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgcng9IjciIGZpbGw9IiMwQzBBMDciLz4KPHJlY3QgeD0iNyIgeT0iMTMiIHdpZHRoPSI0IiBoZWlnaHQ9IjEyIiByeD0iMS41IiBmaWxsPSIjQzlBMjRCIi8+CjxyZWN0IHg9IjE0IiB5PSI3IiB3aWR0aD0iNCIgaGVpZ2h0PSIxOCIgcng9IjEuNSIgZmlsbD0iI0M5QTI0QiIvPgo8cmVjdCB4PSIyMSIgeT0iMTAiIHdpZHRoPSI0IiBoZWlnaHQ9IjE1IiByeD0iMS41IiBmaWxsPSIjQzlBMjRCIi8+Cjwvc3ZnPgo=">
 <meta property="og:type" content="website">
-<meta property="og:title" content="LoudMaster — 影片音量一鍵調到 YouTube 標準">
-<meta property="og:description" content="直接在瀏覽器裡把影片或音樂調到 YouTube 標準響度,不破音、不改變畫質。不用安裝任何東西,檔案也不會上傳到伺服器。">
+<meta property="og:title" content="LoudMaster — 影片音量一鍵調到 YouTube 標準" data-i18n-attr="content:meta_title">
+<meta property="og:description" content="直接在瀏覽器裡把影片或音樂調到 YouTube 標準響度,不破音、不改變畫質。不用安裝任何東西,檔案也不會上傳到伺服器。" data-i18n-attr="content:meta_desc">
 <meta property="og:url" content="https://stevenmusic.github.io/LoudNorm/">
-<meta property="og:locale" content="zh_TW">
+<meta property="og:locale" content="zh_TW" data-i18n-attr="content:og_locale">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="LoudMaster — 影片音量一鍵調到 YouTube 標準">
-<meta name="twitter:description" content="直接在瀏覽器裡把影片或音樂調到 YouTube 標準響度,不破音、不改變畫質。不用安裝任何東西,檔案也不會上傳到伺服器。">
+<meta name="twitter:title" content="LoudMaster — 影片音量一鍵調到 YouTube 標準" data-i18n-attr="content:meta_title">
+<meta name="twitter:description" content="直接在瀏覽器裡把影片或音樂調到 YouTube 標準響度,不破音、不改變畫質。不用安裝任何東西,檔案也不會上傳到伺服器。" data-i18n-attr="content:meta_desc">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="i18n.js"></script>
 <style>
 :root{
   --bg:#0C0A07;
@@ -89,6 +90,13 @@ body{
   display:flex;flex-direction:column;
   min-height:100vh;
 }
+/* Stored language is applied by i18n.js as early as possible (right after
+   the page's own script runs, before user interaction is possible) — this
+   only matters for the "en" case, where the raw HTML still reads zh-Hant
+   until that pass runs. Hiding the body until then avoids a one-frame
+   flash of the wrong language; the far more common zh case never sets
+   this class; so it never pays this cost. */
+html.i18n-pending body{visibility:hidden}
 
 /* ── 頂欄 ───────────────────────── */
 header{
@@ -418,14 +426,15 @@ footer a:hover{color:var(--gold-bright)}
 
 <header>
   <div class="header-left">
-    <a href="https://stevenmusic.github.io/" class="home-link" aria-label="回首頁" title="回首頁">
-      <span aria-hidden="true">←</span><span class="label">首頁</span>
+    <a href="https://stevenmusic.github.io/" class="home-link" aria-label="回首頁" title="回首頁" data-i18n-attr="aria-label:header_home_aria,title:header_home_aria">
+      <span aria-hidden="true">←</span><span class="label" data-i18n="header_home_label">首頁</span>
     </a>
     <h1>Loud<span>Master</span></h1>
   </div>
   <div class="header-right">
-    <button class="btn icon" id="themeToggle" title="切換淺色 / 深色" aria-label="切換淺色或深色主題">◐</button>
-    <a class="btn" href="help.html">說明</a>
+    <button class="btn icon" id="themeToggle" title="切換淺色 / 深色" aria-label="切換淺色或深色主題" data-i18n-attr="title:header_theme_title,aria-label:header_theme_aria">◐</button>
+    <button class="btn icon" id="langToggle" title="Switch to English" aria-label="Switch to English" aria-pressed="false">EN</button>
+    <a class="btn" href="help.html" data-i18n="header_help_link">說明</a>
   </div>
 </header>
 
@@ -435,20 +444,20 @@ footer a:hover{color:var(--gold-bright)}
 
     <!-- 空狀態:載入檔案 -->
     <div class="panel panel-empty">
-      <div class="empty-card" id="emptyCard" role="button" tabindex="0" aria-label="載入影片或音樂檔">
+      <div class="empty-card" id="emptyCard" role="button" tabindex="0" aria-label="載入影片或音樂檔" data-i18n-attr="aria-label:empty_aria">
         <div class="mark" aria-hidden="true">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13m0-13 5 5m-5-5-5 5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
         </div>
-        <p class="empty-title">點擊這裡載入影片或音樂檔案</p>
-        <p class="empty-sub">支援 MP4 / MOV / WebM / MP3 / WAV 等常見格式</p>
-        <a href="help.html" class="link-btn" id="learnMoreLink">或先看看它是怎麼運作的 →</a>
+        <p class="empty-title" data-i18n="empty_title">點擊這裡載入影片或音樂檔案</p>
+        <p class="empty-sub" data-i18n="empty_sub">支援 MP4 / MOV / WebM / MP3 / WAV 等常見格式</p>
+        <a href="help.html" class="link-btn" id="learnMoreLink" data-i18n="empty_learn_more">或先看看它是怎麼運作的 →</a>
       </div>
       <p class="privacy-note">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V6z"/></svg>
-        全程在瀏覽器裡處理,檔案不會上傳到伺服器
+        <span data-i18n="empty_privacy">全程在瀏覽器裡處理,檔案不會上傳到伺服器</span>
       </p>
       <div class="engine-load" id="engineLoad">
-        <div class="engine-load-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="處理引擎下載進度"><div class="engine-load-fill" id="engineLoadFill"></div></div>
+        <div class="engine-load-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="處理引擎下載進度" data-i18n-attr="aria-label:empty_engine_bar_aria"><div class="engine-load-fill" id="engineLoadFill"></div></div>
         <p id="engineLoadText" aria-live="polite">準備處理引擎中…</p>
       </div>
       <input type="file" id="fileInput" accept="video/*,audio/*" hidden>
@@ -468,25 +477,25 @@ footer a:hover{color:var(--gold-bright)}
         </div>
 
         <div class="field">
-          <label for="presetSelect">響度目標</label>
+          <label for="presetSelect" data-i18n="ready_preset_label">響度目標</label>
           <select id="presetSelect">
-            <option value="youtube" selected>YouTube（-14 LUFS / -1 dBTP）</option>
-            <option value="spotify">Spotify（-14 LUFS / -1 dBTP）</option>
-            <option value="tiktok">TikTok / Instagram（-14 LUFS / -1 dBTP）</option>
-            <option value="apple">Apple Music / Podcasts（-16 LUFS / -1 dBTP）</option>
-            <option value="broadcast">廣播電視 EBU R128（-23 LUFS / -1 dBTP）</option>
-            <option value="custom">自訂目標…</option>
+            <option value="youtube" selected data-i18n="preset_youtube_opt">YouTube（-14 LUFS / -1 dBTP）</option>
+            <option value="spotify" data-i18n="preset_spotify_opt">Spotify（-14 LUFS / -1 dBTP）</option>
+            <option value="tiktok" data-i18n="preset_tiktok_opt">TikTok / Instagram（-14 LUFS / -1 dBTP）</option>
+            <option value="apple" data-i18n="preset_apple_opt">Apple Music / Podcasts（-16 LUFS / -1 dBTP）</option>
+            <option value="broadcast" data-i18n="preset_broadcast_opt">廣播電視 EBU R128（-23 LUFS / -1 dBTP）</option>
+            <option value="custom" data-i18n="preset_custom_opt">自訂目標…</option>
           </select>
           <p class="hint" id="presetHint"></p>
         </div>
 
         <div class="field custom-target" id="customTargetField" hidden>
           <div class="custom-target-row">
-            <label for="customLufs">整合響度（LUFS）</label>
+            <label for="customLufs" data-i18n="ready_custom_lufs_label">整合響度（LUFS）</label>
             <input type="number" id="customLufs" value="-14" min="-70" max="-5" step="0.5">
           </div>
           <div class="custom-target-row">
-            <label for="customTp">真實峰值上限（dBTP）</label>
+            <label for="customTp" data-i18n="ready_custom_tp_label">真實峰值上限（dBTP）</label>
             <input type="number" id="customTp" value="-1" min="-9" max="0" step="0.5">
           </div>
           <p class="hint" id="customTargetHint"></p>
@@ -495,16 +504,16 @@ footer a:hover{color:var(--gold-bright)}
         <label class="checkbox-field" for="denoiseToggle">
           <input type="checkbox" id="denoiseToggle">
           <span class="checkbox-text">
-            <span class="label">降噪比較（選用）</span>
-            <span class="hint">會保留原始與降噪兩版，可先 A/B 比較再決定下載哪個；降噪偏保守、不易變悶，但處理時間較長。</span>
+            <span class="label" data-i18n="ready_denoise_label">降噪比較（選用）</span>
+            <span class="hint" data-i18n="ready_denoise_hint">會保留原始與降噪兩版，可先 A/B 比較再決定下載哪個；降噪偏保守、不易變悶，但處理時間較長。</span>
           </span>
         </label>
 
         <div class="warn-box" id="sizeWarnBox" hidden></div>
 
         <div class="actions">
-          <button class="btn ghost" id="chooseAnother">換一個檔案</button>
-          <button class="btn primary" id="startBtn" disabled>開始處理</button>
+          <button class="btn ghost" id="chooseAnother" data-i18n="ready_choose_another">換一個檔案</button>
+          <button class="btn primary" id="startBtn" disabled data-i18n="ready_start">開始處理</button>
         </div>
       </div>
     </div>
@@ -518,12 +527,12 @@ footer a:hover{color:var(--gold-bright)}
         <div class="working-warn">
           <div class="t">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/></svg>
-            請讓這個分頁保持在最前面
+            <span data-i18n="working_warn_title">請讓這個分頁保持在最前面</span>
           </div>
-          <p>切到其他分頁、鎖定螢幕，處理可能會被瀏覽器暫停，需要重新開始。</p>
+          <p data-i18n="working_warn_body">切到其他分頁、鎖定螢幕，處理可能會被瀏覽器暫停，需要重新開始。</p>
         </div>
-        <p class="working-caption">處理時間依裝置效能而不同，完成後會自動顯示成品。</p>
-        <button class="cancel-circle" id="cancelBtn" aria-label="取消處理" title="取消">取消</button>
+        <p class="working-caption" data-i18n="working_caption">處理時間依裝置效能而不同，完成後會自動顯示成品。</p>
+        <button class="cancel-circle" id="cancelBtn" aria-label="取消處理" title="取消" data-i18n="working_cancel_label" data-i18n-attr="aria-label:working_cancel_aria,title:working_cancel_title">取消</button>
         <button class="log-toggle" id="logToggle">顯示詳細記錄</button>
         <div class="log-box" id="logBox"></div>
       </div>
@@ -535,32 +544,32 @@ footer a:hover{color:var(--gold-bright)}
         <video class="preview" id="previewVideo" controls playsinline hidden></video>
         <audio id="previewAudioOverlay" hidden></audio>
         <div class="variant-switch" id="variantSwitch" hidden>
-          <button type="button" class="variant-btn active" id="variantPlainBtn" data-variant="plain" aria-pressed="true">原始版</button>
-          <button type="button" class="variant-btn" id="variantDenoiseBtn" data-variant="denoised" aria-pressed="false">降噪版</button>
+          <button type="button" class="variant-btn active" id="variantPlainBtn" data-variant="plain" aria-pressed="true" data-i18n="done_variant_plain">原始版</button>
+          <button type="button" class="variant-btn" id="variantDenoiseBtn" data-variant="denoised" aria-pressed="false" data-i18n="done_variant_denoised">降噪版</button>
         </div>
         <div class="warn-box" id="warnBox" hidden></div>
         <div class="stats">
           <div class="stat-box">
-            <div class="lbl">整合響度</div>
+            <div class="lbl" data-i18n="done_stat_lufs_label">整合響度</div>
             <div class="before" id="statLufsBefore">—</div>
             <div class="after" id="statLufsAfter">—</div>
           </div>
           <div class="stat-box">
-            <div class="lbl">真實峰值</div>
+            <div class="lbl" data-i18n="done_stat_tp_label">真實峰值</div>
             <div class="before" id="statTpBefore">—</div>
             <div class="after" id="statTpAfter">—</div>
           </div>
         </div>
         <p class="result-note" id="resultNote"></p>
         <div class="actions">
-          <button class="btn ghost" id="resetBtn">處理另一個</button>
-          <button class="btn primary" id="downloadBtn">下載成品</button>
+          <button class="btn ghost" id="resetBtn" data-i18n="done_reset">處理另一個</button>
+          <button class="btn primary" id="downloadBtn" data-i18n="done_download">下載成品</button>
         </div>
-        <button class="report-link" id="reprocessBtn">換個目標重新處理這個檔案</button>
+        <button class="report-link" id="reprocessBtn" data-i18n="done_reprocess">換個目標重新處理這個檔案</button>
         <button class="report-link" id="chartToggle" hidden>顯示響度曲線</button>
         <div class="loudness-chart" id="loudnessChart" hidden>
           <div class="loudness-chart-head">
-            <span>成品響度隨時間變化</span>
+            <span data-i18n="done_chart_head">成品響度隨時間變化</span>
             <span class="loudness-chart-legend">
               <span class="dot dot-m"></span>momentary
               <span class="dot dot-s"></span>short-term
@@ -568,7 +577,7 @@ footer a:hover{color:var(--gold-bright)}
           </div>
           <svg id="loudnessChartSvg" viewBox="0 0 600 120" preserveAspectRatio="none"></svg>
         </div>
-        <button class="report-link" id="reportBtn">下載響度報告（JSON）</button>
+        <button class="report-link" id="reportBtn" data-i18n="done_report">下載響度報告（JSON）</button>
       </div>
     </div>
 
@@ -579,7 +588,7 @@ footer a:hover{color:var(--gold-bright)}
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
         </div>
         <p id="errorMessage">發生錯誤。</p>
-        <button class="btn primary" id="errorResetBtn">再試一次</button>
+        <button class="btn primary" id="errorResetBtn" data-i18n="error_retry">再試一次</button>
       </div>
     </div>
 
@@ -616,7 +625,7 @@ const LOAD_TIMEOUT_MS = 60000;
 function withTimeout(promise, ms, label) {
   let timer;
   const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`${label}逾時（超過 ${Math.round(ms / 1000)} 秒沒有回應）`)), ms);
+    timer = setTimeout(() => reject(new Error(t("engine_timeout", { label, sec: Math.round(ms / 1000) }))), ms);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
@@ -640,7 +649,7 @@ function withTimeout(promise, ms, label) {
  */
 async function fetchBlobURLWithProgress(url, mimeType, onProgress) {
   const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`下載失敗（HTTP ${resp.status}）：${url}`);
+  if (!resp.ok) throw new Error(t("engine_download_fail", { status: resp.status, url }));
 
   const total = parseInt(resp.headers.get("Content-Length") || "-1", 10);
   const reader = resp.body?.getReader();
@@ -665,7 +674,7 @@ async function fetchBlobURLWithProgress(url, mimeType, onProgress) {
     // disturbed, so we start over with a brand new response rather than
     // touching it again.
     const fresh = await fetch(url);
-    if (!fresh.ok) throw new Error(`下載失敗（HTTP ${fresh.status}）：${url}`);
+    if (!fresh.ok) throw new Error(t("engine_download_fail", { status: fresh.status, url }));
     const buf = await fresh.arrayBuffer();
     return URL.createObjectURL(new Blob([buf], { type: mimeType }));
   }
@@ -681,11 +690,11 @@ async function loadEngineModules(onProgress) {
   for (let i = 0; i < CDN_MIRRORS.length; i++) {
     const mirror = CDN_MIRRORS[i];
     try {
-      onProgress?.("載入處理引擎程式…");
+      onProgress?.("engine_load_code");
       const [ffmpegMod, utilMod] = await withTimeout(
         Promise.all([import(mirror.ffmpeg), import(mirror.util)]),
         LOAD_TIMEOUT_MS,
-        "載入引擎程式"
+        t("engine_load_code_timeout_label")
       );
       FFmpeg = ffmpegMod.FFmpeg;
       toBlobURL = utilMod.toBlobURL;
@@ -693,10 +702,10 @@ async function loadEngineModules(onProgress) {
       CORE_BASE = mirror.core;
       return;
     } catch (e) {
-      engineLoadErrors.push(`來源 ${i + 1}：${e.message || e}`);
+      engineLoadErrors.push(t("engine_source_n", { n: i + 1, msg: e.message || e }));
     }
   }
-  throw new Error("連不上處理引擎。\n" + engineLoadErrors.join("\n"));
+  throw new Error(t("engine_no_source") + "\n" + engineLoadErrors.join("\n"));
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -712,13 +721,20 @@ async function loadEngineModules(onProgress) {
    重新量一次,如果還是超標就照量到的超出量再修正、重跑一次。
    ════════════════════════════════════════════════════════════════ */
 
-const PRESETS = {
-  youtube:  { label: "YouTube",                 i: -14, tp: -1, note: "YouTube 播放時只會把過響的影片轉小聲,不會把小聲的轉大聲。" },
-  spotify:  { label: "Spotify",                  i: -14, tp: -1, note: "Spotify 預設的 Normal 音量模式目標。" },
-  tiktok:   { label: "TikTok / Instagram",       i: -14, tp: -1, note: "手機短影音平台實測的正規化目標。" },
-  apple:    { label: "Apple Music / Podcasts",   i: -16, tp: -1, note: "Apple 的 Sound Check 目標。" },
-  broadcast:{ label: "廣播電視 EBU R128",         i: -23, tp: -1, note: "歐洲廣播規範 EBU R128 的交件標準。" },
+// label/note are looked up through t() at use time (presetFor()) rather than
+// stored as plain text here, so they follow whichever language is active —
+// including a language flip that happens after this object is defined.
+const PRESET_DEFS = {
+  youtube:  { i: -14, tp: -1, label: "YouTube",               noteKey: "preset_youtube_note" },
+  spotify:  { i: -14, tp: -1, label: "Spotify",                noteKey: "preset_spotify_note" },
+  tiktok:   { i: -14, tp: -1, label: "TikTok / Instagram",     noteKey: "preset_tiktok_note" },
+  apple:    { i: -16, tp: -1, label: "Apple Music / Podcasts", noteKey: "preset_apple_note" },
+  broadcast:{ i: -23, tp: -1, labelKey: "preset_broadcast_label", noteKey: "preset_broadcast_note" },
 };
+function presetFor(key) {
+  const d = PRESET_DEFS[key];
+  return { label: d.labelKey ? t(d.labelKey) : d.label, i: d.i, tp: d.tp, note: t(d.noteKey) };
+}
 
 const BASE_TP_SAFETY = 0.2;
 const NO_SOXR_EXTRA_SAFETY = 1.1;
@@ -773,10 +789,10 @@ class Engine {
   }
 
   async load(onProgress) {
-    onProgress?.("下載處理引擎程式…", 0);
+    onProgress?.("engine_download_core_progress", 0);
     const coreURL = await withTimeout(
       toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, "text/javascript"),
-      LOAD_TIMEOUT_MS, "下載引擎程式"
+      LOAD_TIMEOUT_MS, t("engine_download_core_label")
     );
     // The wasm binary is ~31MB — on a slow connection this is the step that
     // takes real time, so it gets its own progress readout rather than
@@ -786,12 +802,12 @@ class Engine {
     const wasmURL = await withTimeout(
       fetchBlobURLWithProgress(`${CORE_BASE}/ffmpeg-core.wasm`, "application/wasm",
         ({ received, total }) => {
-          onProgress?.("下載處理引擎…", received / total);
+          onProgress?.("engine_download_wasm_progress", received / total);
         }),
-      LOAD_TIMEOUT_MS, "下載引擎核心"
+      LOAD_TIMEOUT_MS, t("engine_download_wasm_label")
     );
-    onProgress?.("啟動處理引擎…", 1);
-    await withTimeout(this.ffmpeg.load({ coreURL, wasmURL }), LOAD_TIMEOUT_MS, "啟動引擎");
+    onProgress?.("engine_start_progress", 1);
+    await withTimeout(this.ffmpeg.load({ coreURL, wasmURL }), LOAD_TIMEOUT_MS, t("engine_start_label"));
   }
 
   async writeInput(file) {
@@ -816,7 +832,7 @@ class Engine {
     const audioMatch = captured.match(/Stream #\d+:\d+.*?Audio:\s*([a-zA-Z0-9_]+).*?(\d+)\s*Hz,\s*(mono|stereo|[\d.]+)/);
 
     if (!videoMatch && !audioMatch) {
-      throw new Error("無法讀取這個檔案,可能不是有效的影片或音訊檔。");
+      throw new Error(t("probe_fail"));
     }
 
     return {
@@ -846,14 +862,14 @@ class Engine {
     ]);
     this.ffmpeg.off("log", capture);
     const j = parseLoudnormJSON(captured);
-    if (!j) throw new Error("量測失敗,無法解析響度資訊。");
+    if (!j) throw new Error(t("measure_fail"));
     return { i: toFloatOrNull(j.input_i), tp: toFloatOrNull(j.input_tp) };
   }
 
   /** 跟桌面版 mastering.py 完全相同的決策邏輯。 */
   plan(inputI, inputTP, targetI, targetTP) {
     if (inputI === null || inputI <= SILENCE_FLOOR) {
-      throw new Error("這個檔案的音訊是(接近)無聲,無法計算需要提升多少音量。");
+      throw new Error(t("silence_fail"));
     }
     const ceiling = targetTP - TP_SAFETY;
     const measuredTP = inputTP ?? 0;
@@ -932,7 +948,7 @@ class Engine {
     let finalStats = null;
 
     while (true) {
-      onStage(corrections === 0 ? "輸出成品" : `修正峰值（第 ${corrections} 次）`);
+      onStage(corrections === 0 ? { key: "render_output_stage" } : { key: "render_correct_stage", params: { n: corrections } });
       const chain = this.buildAudioChain(plan.gainDb, plan.useLimiter, plan.ceiling, needsDither, denoise);
       try { await this.ffmpeg.deleteFile(outputName); } catch (e) {}
 
@@ -943,7 +959,7 @@ class Engine {
       args.push("-c:a", audioCodec, ...audioArgs, outputName);
       await this.ffmpeg.exec(args);
 
-      onStage("驗證成品");
+      onStage({ key: "render_verify_stage" });
       finalStats = await this.measure(outputName, targetI, targetTP, dualMono);
 
       if (finalStats.tp === null || finalStats.tp <= targetTP + CORRECTION_TOLERANCE || corrections >= MAX_CORRECTIONS) {
@@ -1049,19 +1065,34 @@ const app = document.getElementById("app");
 const $ = (id) => document.getElementById(id);
 let engine = null;
 // The running Engine's onProgress callback is fixed at construction time, but
-// which pass it belongs to changes as we move through the job — these two are
+// which pass it belongs to changes as we move through the job — these are
 // updated before each ffmpeg.exec() call and read back inside the callback.
-let progressStageLabel = "";
+// Stored as a translation key + params (not a finished string) so a language
+// toggle mid-run can re-render the current stage correctly — see
+// refreshDynamicUI(), which replays the last known fraction/elapsed through
+// renderProgress() again after applyLanguage() runs.
+let progressStageKey = "";
+let progressStageParams = null;
+let progressStagePassLabelKey = null;
 let progressTotalSeconds = 0;
+let lastProgressFraction = 0;
+let lastProgressElapsed = 0;
 
 function renderProgress(fraction, elapsedSeconds) {
+  lastProgressFraction = fraction;
+  lastProgressElapsed = elapsedSeconds;
   const percent = Math.round(fraction * 100);
-  $("progressStage").textContent = `${progressStageLabel} ${percent}%`;
+  const stageText = t(progressStageKey, progressStageParams) + (progressStagePassLabelKey ? t(progressStagePassLabelKey) : "");
+  $("progressStage").textContent = `${stageText} ${percent}%`;
   $("progressTime").textContent = `${formatTime(elapsedSeconds)} / ${formatTime(progressTotalSeconds)}`;
   $("progressFill").style.width = `${percent}%`;
   $("progressFill").parentElement.setAttribute("aria-valuenow", String(percent));
 }
 let engineReady = false;
+let wasmUnsupported = false;
+let engineLoadFailedError = null;
+let lastEngineStageKey = "empty_engine_loading";
+let lastEngineStageFraction = null;
 let currentFile = null;
 let currentInfo = null;
 let outputURL = null;
@@ -1204,6 +1235,25 @@ function appendLog(line) {
   box.scrollTop = box.scrollHeight;
 }
 
+/** Recomputes a rendered variant's localized note/warning text from its raw
+ *  numeric/boolean data rather than a cached finished string, so a language
+ *  toggle can re-render the done panel correctly (see applyVariant() below,
+ *  and buildVariant() where noteData/warnData are captured). */
+function composeNote(d) {
+  const dir = d.gainDb >= 0 ? t("variant_gain_up") : t("variant_gain_down");
+  let note = t("variant_note_gain", { dir, db: Math.abs(d.gainDb).toFixed(1) });
+  note += d.useLimiter ? t("variant_note_limiter") : t("variant_note_pure_gain");
+  if (d.renderVideo) note += t("variant_note_video_kept");
+  else if (d.outputHasVideo) note += t("variant_note_preview_only");
+  else note += t("variant_note_lossless_wav");
+  if (d.surroundLayout) note += t("variant_note_surround", { layout: d.surroundLayout });
+  if (d.denoise) note += t("variant_note_denoised");
+  return note;
+}
+function composeWarn(d) {
+  return d ? t("variant_warn_shortfall", { db: d.shortfallDb.toFixed(1) }) : null;
+}
+
 /** 清掉上一次處理留下的畫面與輸出,但保留已載入的檔案與已探測的資訊。 */
 function clearPreviousOutput() {
   teardownDenoiseAudioGraph();
@@ -1221,7 +1271,7 @@ function clearPreviousOutput() {
   lastReport = null;
   $("logBox").textContent = "";
   $("logBox").classList.remove("open");
-  $("logToggle").textContent = "顯示詳細記錄";
+  $("logToggle").textContent = t("working_log_show");
   $("previewVideo").hidden = true;
   $("previewVideo").src = "";
   $("previewVideo").muted = false;
@@ -1231,7 +1281,7 @@ function clearPreviousOutput() {
   $("warnBox").hidden = true;
   $("loudnessChart").hidden = true;
   $("chartToggle").hidden = true;
-  $("chartToggle").textContent = "顯示響度曲線";
+  $("chartToggle").textContent = t("done_chart_show");
   $("variantSwitch").hidden = true;
   $("variantPlainBtn").classList.add("active");
   $("variantPlainBtn").setAttribute("aria-pressed", "true");
@@ -1291,9 +1341,10 @@ function applyVariant(key) {
 
   $("statLufsAfter").textContent = v.statLufsAfter;
   $("statTpAfter").textContent = v.statTpAfter;
-  $("resultNote").textContent = v.note;
+  $("resultNote").textContent = composeNote(v.noteData);
 
-  if (v.warnText) { $("warnBox").hidden = false; $("warnBox").textContent = v.warnText; }
+  const warnText = composeWarn(v.warnData);
+  if (warnText) { $("warnBox").hidden = false; $("warnBox").textContent = warnText; }
   else { $("warnBox").hidden = true; }
 
   renderLoudnessChart(v.chartPoints, v.targetI);
@@ -1328,7 +1379,10 @@ function backToReadyForReprocess() {
 
 let engineLoadPromise = null;
 
-function setEngineLoadUI(text, fraction) {
+function setEngineLoadUI(key, fraction) {
+  lastEngineStageKey = key;
+  lastEngineStageFraction = fraction;
+  const text = t(key);
   $("engineLoadText").textContent = text;
   if (fraction != null) {
     const percent = Math.round(fraction * 100);
@@ -1338,16 +1392,66 @@ function setEngineLoadUI(text, fraction) {
   $("engineStatus").textContent = text;
 }
 
+/** Rebuilds the "engine failed to load" retry UI. It replaces its children
+ *  with plain text nodes rather than being data-i18n-managed, so it's called
+ *  again (with the same error) on a language toggle by refreshDynamicUI(). */
+function renderEngineLoadFailureUI(e) {
+  engineLoadFailedError = e;
+  $("engineLoadText").innerHTML = "";
+  const summary = document.createElement("span");
+  summary.textContent = t("engine_load_failed_title");
+  const retry = document.createElement("button");
+  retry.className = "retry-link";
+  retry.textContent = t("engine_retry");
+  retry.addEventListener("click", () => {
+    $("engineLoadFill").style.width = "0%";
+    ensureEngine().catch(() => {});
+  });
+  // The reason goes on screen, not just in the console — the console isn't
+  // reachable on a phone, and without it this is a dead end to diagnose.
+  const reason = document.createElement("div");
+  reason.className = "engine-load-reason";
+  reason.textContent = engineErrorReason(e);
+  $("engineLoadText").append(summary, "　", retry, reason);
+  $("engineStatus").textContent = summary.textContent;
+}
+
+/**
+ * Re-renders every piece of on-screen text that JS manages directly (and so
+ * the static data-i18n pass can't own, since it would stomp whatever JS put
+ * there) — engine status, the in-progress stage/progress readout, the done
+ * panel's note/warning, current file metadata, and the open/closed labels on
+ * the log and chart toggles. Called once on initial load and again after
+ * every language toggle (see initSmI18n's afterApply below).
+ */
+function refreshDynamicUI() {
+  if (wasmUnsupported) {
+    $("engineLoadText").textContent = t("engine_no_wasm_text");
+    $("engineStatus").textContent = t("engine_no_wasm_status");
+  } else if (engineLoadFailedError) {
+    renderEngineLoadFailureUI(engineLoadFailedError);
+  } else {
+    setEngineLoadUI(lastEngineStageKey, lastEngineStageFraction);
+  }
+  updatePresetHint();
+  renderFileMeta();
+  $("logToggle").textContent = $("logBox").classList.contains("open") ? t("working_log_hide") : t("working_log_show");
+  $("chartToggle").textContent = $("loudnessChart").hidden ? t("done_chart_show") : t("done_chart_hide");
+  if (app.dataset.state === "working") renderProgress(lastProgressFraction, lastProgressElapsed);
+  if (app.dataset.state === "done" && variants) applyVariant(activeVariant);
+}
+
 /** Loads the engine exactly once; concurrent callers share the same attempt. */
 function ensureEngine() {
   if (engineLoadPromise) return engineLoadPromise;
+  engineLoadFailedError = null;
   engineLoadPromise = (async () => {
-    await loadEngineModules((text) => setEngineLoadUI(text, 0));
+    await loadEngineModules((key) => setEngineLoadUI(key, 0));
     engine = new Engine(appendLog, renderProgress);
-    await engine.load((text, fraction) => setEngineLoadUI(text, fraction));
+    await engine.load((key, fraction) => setEngineLoadUI(key, fraction));
     engineReady = true;
     $("engineLoad").classList.add("hidden");
-    setEngineLoadUI("處理引擎已就緒", 1);
+    setEngineLoadUI("engine_ready", 1);
   })().catch((e) => {
     engineLoadPromise = null; // let a retry try again from scratch
     engineReady = false;
@@ -1361,13 +1465,35 @@ function engineErrorReason(e) {
 }
 
 function describeEngineError(e) {
-  return `處理引擎載入失敗。\n\n詳細原因：\n${engineErrorReason(e)}\n\n可以檢查網路連線，或把這段文字截圖回報。`;
+  return t("engine_load_failed_full", { reason: engineErrorReason(e) });
+}
+
+/** Renders #fileMeta from currentFile/currentInfo — called from handleFile()
+ *  as info becomes available, and again from refreshDynamicUI() on a
+ *  language toggle so it re-localizes instead of going stale. */
+function renderFileMeta() {
+  if (!currentFile) return;
+  if (!currentInfo) {
+    $("fileMeta").textContent = t("file_meta_reading", { size: (currentFile.size / 1024 / 1024).toFixed(1) });
+    return;
+  }
+  const parts = [];
+  if (currentInfo.hasVideo) parts.push(`${currentInfo.videoCodec.toUpperCase()} ${currentInfo.width}x${currentInfo.height}`);
+  if (currentInfo.hasAudio) {
+    parts.push(`${currentInfo.sampleRate}Hz ${currentInfo.channelLayout}`);
+    if (isSurroundLayout(currentInfo.channelLayout)) parts.push(t("file_surround"));
+  }
+  if (currentInfo.duration) {
+    const m = Math.floor(currentInfo.duration / 60), s = Math.round(currentInfo.duration % 60);
+    parts.push(`${m}:${String(s).padStart(2, "0")}`);
+  }
+  $("fileMeta").textContent = parts.join(" · ") || t("file_meta_loaded");
 }
 
 async function handleFile(file) {
   if (!file) return;
   if (!/^(video|audio)\//.test(file.type) && !/\.(mp4|mov|m4v|webm|mkv|avi|mp3|wav|flac|m4a|aac|ogg)$/i.test(file.name)) {
-    showError("這個檔案看起來不是影片或音訊。請確認檔案格式。");
+    showError(t("file_not_media"));
     return;
   }
   currentFile = file;
@@ -1375,12 +1501,12 @@ async function handleFile(file) {
   setState("ready");
   $("startBtn").disabled = true;
   $("fileName").textContent = file.name;
-  $("fileMeta").textContent = `${(file.size / 1024 / 1024).toFixed(1)} MB · 讀取中…`;
+  renderFileMeta();
 
   const sizeWarn = $("sizeWarnBox");
   if (file.size > 500 * 1024 * 1024) {
     sizeWarn.hidden = false;
-    sizeWarn.textContent = "這個檔案超過 500 MB。瀏覽器版沒有安裝限制，但影片全部要載入記憶體處理，大檔案可能會很慢或讓分頁當掉。建議先用較短的片段測試。";
+    sizeWarn.textContent = t("file_size_warn");
   } else {
     sizeWarn.hidden = true;
   }
@@ -1395,26 +1521,16 @@ async function handleFile(file) {
   try {
     await engine.writeInput(file);
     currentInfo = await engine.probe();
-    const parts = [];
-    if (currentInfo.hasVideo) parts.push(`${currentInfo.videoCodec.toUpperCase()} ${currentInfo.width}x${currentInfo.height}`);
-    if (currentInfo.hasAudio) {
-      parts.push(`${currentInfo.sampleRate}Hz ${currentInfo.channelLayout}`);
-      if (isSurroundLayout(currentInfo.channelLayout)) parts.push("環繞音效");
-    }
-    if (currentInfo.duration) {
-      const m = Math.floor(currentInfo.duration / 60), s = Math.round(currentInfo.duration % 60);
-      parts.push(`${m}:${String(s).padStart(2, "0")}`);
-    }
-    $("fileMeta").textContent = parts.join(" · ") || "已載入";
+    renderFileMeta();
 
     if (!currentInfo.hasAudio) {
-      showError("這個檔案沒有偵測到音軌，無法調整音量。");
+      showError(t("file_no_audio"));
       return;
     }
     updatePresetHint();
     $("startBtn").disabled = false;
   } catch (e) {
-    showError(e.message || "讀取檔案時發生錯誤。");
+    showError(e.message || t("file_read_error"));
   }
 }
 
@@ -1423,13 +1539,13 @@ function clamp(value, lo, hi) { return Math.min(hi, Math.max(lo, value)); }
 /** Same bounds as the desktop tool's presets.py: LUFS -70..-5, TP -9..0. */
 function resolveActivePreset() {
   const key = $("presetSelect").value;
-  if (key !== "custom") return PRESETS[key];
+  if (key !== "custom") return presetFor(key);
 
   const rawLufs = parseFloat($("customLufs").value);
   const rawTp = parseFloat($("customTp").value);
   const i = clamp(Number.isFinite(rawLufs) ? rawLufs : -14, -70, -5);
   const tp = clamp(Number.isFinite(rawTp) ? rawTp : -1, -9, 0);
-  return { label: "自訂", i, tp, note: "" };
+  return { label: t("preset_custom_label"), i, tp, note: "" };
 }
 
 function updatePresetHint() {
@@ -1440,10 +1556,10 @@ function updatePresetHint() {
     const preset = resolveActivePreset();
     $("presetHint").textContent = "";
     $("customTargetHint").textContent =
-      `目標：${preset.i.toFixed(1)} LUFS / ${preset.tp.toFixed(1)} dBTP` +
-      (preset.i > -8 ? "　響度目標偏高，成品可能需要較多限幅甚至無法完全達標。" : "");
+      t("preset_target_hint", { i: preset.i.toFixed(1), tp: preset.tp.toFixed(1) }) +
+      (preset.i > -8 ? t("preset_target_high_warn") : "");
   } else {
-    $("presetHint").textContent = PRESETS[$("presetSelect").value].note;
+    $("presetHint").textContent = presetFor($("presetSelect").value).note;
   }
 }
 
@@ -1453,20 +1569,22 @@ async function startProcessing() {
   setState("working");
   cancelled = false;
   progressTotalSeconds = currentInfo.duration || 0;
-  progressStageLabel = "分析原始響度";
+  progressStageKey = "proc_analyze_stage";
+  progressStageParams = null;
+  progressStagePassLabelKey = null;
   renderProgress(0, 0);
 
   try {
     const output = chooseOutput(currentInfo);
     if (!output) {
-      showError(`目前不支援輸出 ${currentInfo.videoCodec.toUpperCase()} 編碼的影像。\n請改用支援 H.264 / VP9 的影片，或使用進階版（Python 命令列工具）。`);
+      showError(t("proc_unsupported_codec", { codec: currentInfo.videoCodec.toUpperCase() }));
       return;
     }
 
     const src = await engine.measure(engine.inputName, preset.i, preset.tp, currentInfo.dualMono);
     if (cancelled) return;
     if (src.i === null || src.i <= SILENCE_FLOOR) {
-      showError("這個檔案的音訊是(接近)無聲，無法計算需要提升多少音量。");
+      showError(t("silence_fail"));
       return;
     }
 
@@ -1477,8 +1595,8 @@ async function startProcessing() {
     // exactly the single-pass flow that existed before the toggle.
     const compare = $("denoiseToggle").checked;
     const passes = compare
-      ? [{ key: "plain", denoise: false, label: "" }, { key: "denoised", denoise: true, label: "（降噪版）" }]
-      : [{ key: "plain", denoise: false, label: "" }];
+      ? [{ key: "plain", denoise: false, labelKey: null }, { key: "denoised", denoise: true, labelKey: "variant_denoise_label" }]
+      : [{ key: "plain", denoise: false, labelKey: null }];
 
     const mime = output.container === "wav" ? "audio/wav" : output.container === "webm" ? "video/webm" : "video/mp4";
 
@@ -1495,7 +1613,11 @@ async function startProcessing() {
       const result = await engine.renderAndVerify(
         plan, preset.i, preset.tp, currentInfo.dualMono,
         output.container, output.audioCodec, output.audioArgs, renderVideo,
-        (stage) => { progressStageLabel = stage + pass.label; }, pass.denoise
+        (stageInfo) => {
+          progressStageKey = stageInfo.key;
+          progressStageParams = stageInfo.params || null;
+          progressStagePassLabelKey = pass.labelKey;
+        }, pass.denoise
       );
       if (cancelled) return null;
 
@@ -1512,31 +1634,26 @@ async function startProcessing() {
       const suffix = pass.denoise ? "_loudnorm_denoised" : "_loudnorm";
       const fileName = currentFile.name.replace(/\.[^.]+$/, "") + suffix + "." + output.container;
 
-      const gainDirection = plan.gainDb >= 0 ? "提升" : "降低";
-      let note = `${gainDirection} ${Math.abs(plan.gainDb).toFixed(1)} dB`;
-      note += plan.useLimiter ? "，其中部分經過真實峰值限幅器處理" : "（純增益，不改變音質）";
-      if (renderVideo) {
-        note += "。影像已原封不動保留，未重新編碼。";
-      } else if (output.hasVideo) {
-        note += "。畫面沿用原始版預覽，這裡只是比較聲音；下載時才會產生這個版本專屬的完整影片。";
-      } else {
-        note += "。輸出為無損 24-bit WAV。";
-      }
-      if (isSurroundLayout(currentInfo.channelLayout)) {
-        note += `依 ITU-R BS.1770 對 ${currentInfo.channelLayout} 環繞聲道加權量測，非只取前左右聲道。`;
-      }
-      if (pass.denoise) note += "已套用保守降噪。";
-
-      let warnText = null;
-      if (plan.shortfallDb > 0.5) {
-        warnText = `這段素材峰值偏高（可能有爆音或碰撞聲），完全達標需要更多限幅，因此成品會比目標小聲約 ${plan.shortfallDb.toFixed(1)} dB，避免聲音被壓得太扁。`;
-      }
+      // Kept as raw data, not a finished string — composeNote()/composeWarn()
+      // (near applyVariant) build the actual localized text from this both
+      // now and again after a language toggle.
+      const noteData = {
+        gainDb: plan.gainDb,
+        useLimiter: plan.useLimiter,
+        renderVideo,
+        outputHasVideo: output.hasVideo,
+        surroundLayout: isSurroundLayout(currentInfo.channelLayout) ? currentInfo.channelLayout : null,
+        denoise: pass.denoise,
+      };
+      const warnData = plan.shortfallDb > 0.5 ? { shortfallDb: plan.shortfallDb } : null;
 
       // Optional and purely informational — never let a failure here take
       // down a job that has otherwise already succeeded.
       let chartPoints = [];
       try {
-        progressStageLabel = "分析響度變化" + pass.label;
+        progressStageKey = "proc_chart_stage";
+        progressStageParams = null;
+        progressStagePassLabelKey = pass.labelKey;
         chartPoints = await engine.measureTimeSeries(result.outputName, currentInfo.dualMono);
       } catch (e) {
         console.error("loudness chart failed:", e);
@@ -1575,7 +1692,7 @@ async function startProcessing() {
       };
 
       return {
-        blob, url, fileName, note, warnText, chartPoints,
+        blob, url, fileName, noteData, warnData, chartPoints,
         targetI: preset.i,
         hasVideo: renderVideo,
         previewOnly: output.hasVideo && !renderVideo,
@@ -1594,11 +1711,13 @@ async function startProcessing() {
     }
 
     rebuildFullDenoisedVariant = (compare && output.hasVideo)
-      ? () => buildVariant({ key: "denoised", denoise: true, label: "（降噪版，完整影片）" }, true)
+      ? () => buildVariant({ key: "denoised", denoise: true, labelKey: "variant_denoise_full_label" }, true)
       : null;
 
     renderProgress(1, progressTotalSeconds);
-    progressStageLabel = "完成";
+    progressStageKey = "proc_done_stage";
+    progressStageParams = null;
+    progressStagePassLabelKey = null;
 
     variants = builtVariants;
     if (compare && output.hasVideo) await setupDenoiseAudioGraph();
@@ -1610,7 +1729,7 @@ async function startProcessing() {
     setState("done");
   } catch (e) {
     console.error(e);
-    if (!cancelled) showError(e.message || "處理時發生錯誤，請再試一次。");
+    if (!cancelled) showError(e.message || t("proc_generic_error"));
   }
 }
 
@@ -1677,7 +1796,7 @@ async function shareOrDownloadBlob(blob, filename) {
     a.href = await new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result);
-      reader.onerror = () => reject(reader.error || new Error("讀取檔案失敗"));
+      reader.onerror = () => reject(reader.error || new Error(t("share_read_fail")));
       reader.readAsDataURL(blob);
     });
     document.body.appendChild(a);
@@ -1705,7 +1824,7 @@ async function downloadOutput() {
     const btn = $("downloadBtn");
     const originalText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = "產生完整影片中…";
+    btn.textContent = t("download_building_video");
     try {
       const full = await rebuildFullDenoisedVariant();
       if (!full) return; // job was cancelled mid-rebuild
@@ -1716,7 +1835,7 @@ async function downloadOutput() {
       applyVariant(activeVariant);
     } catch (e) {
       console.error("full-video rebuild for download failed:", e);
-      showError("產生完整影片時發生錯誤，請再試一次。");
+      showError(t("download_rebuild_fail"));
       return;
     } finally {
       btn.disabled = false;
@@ -1748,19 +1867,21 @@ $("cancelBtn").addEventListener("click", () => {
   engine = null;
   engineReady = false;
   engineLoadPromise = null;
+  engineLoadFailedError = null;
   resetToEmpty();
   $("engineLoad").classList.remove("hidden");
   $("engineLoadFill").style.width = "0%";
-  ensureEngine().catch((e) => console.error(e));
+  setEngineLoadUI("empty_engine_loading", 0);
+  ensureEngine().catch((e) => { console.error(e); renderEngineLoadFailureUI(e); });
 });
 $("logToggle").addEventListener("click", () => {
   const open = $("logBox").classList.toggle("open");
-  $("logToggle").textContent = open ? "隱藏詳細記錄" : "顯示詳細記錄";
+  $("logToggle").textContent = open ? t("working_log_hide") : t("working_log_show");
 });
 $("chartToggle").addEventListener("click", () => {
   const show = $("loudnessChart").hidden;
   $("loudnessChart").hidden = !show;
-  $("chartToggle").textContent = show ? "隱藏響度曲線" : "顯示響度曲線";
+  $("chartToggle").textContent = show ? t("done_chart_hide") : t("done_chart_show");
 });
 $("variantPlainBtn").addEventListener("click", () => applyVariant("plain"));
 $("variantDenoiseBtn").addEventListener("click", () => applyVariant("denoised"));
@@ -1839,32 +1960,20 @@ $("variantDenoiseBtn").addEventListener("click", () => applyVariant("denoised"))
   });
 })();
 
-updatePresetHint();
+// Sets the shared zh/en language (from localStorage's sm_lang, default zh),
+// applies it to every data-i18n-tagged element, then refreshes the JS-managed
+// dynamic text (engine status, current progress, etc. — see refreshDynamicUI)
+// so it matches too. Also runs afterApply on every later #langToggle click.
+initSmI18n({ afterApply: refreshDynamicUI });
+
 if (typeof WebAssembly === "undefined") {
-  $("engineLoadText").textContent = "此瀏覽器不支援 WebAssembly，無法使用此工具";
-  $("engineStatus").textContent = "此瀏覽器不支援 WebAssembly";
+  wasmUnsupported = true;
+  $("engineLoadText").textContent = t("engine_no_wasm_text");
+  $("engineStatus").textContent = t("engine_no_wasm_status");
 } else {
   // Warm up in the background so it is usually ready by the time a file is
   // picked; handleFile() awaits the same promise if the user is faster.
-  ensureEngine().catch((e) => {
-    $("engineLoadText").innerHTML = "";
-    const summary = document.createElement("span");
-    summary.textContent = "處理引擎載入失敗。";
-    const retry = document.createElement("button");
-    retry.className = "retry-link";
-    retry.textContent = "重試";
-    retry.addEventListener("click", () => {
-      $("engineLoadFill").style.width = "0%";
-      ensureEngine().catch(() => {});
-    });
-    // The reason goes on screen, not just in the console — the console isn't
-    // reachable on a phone, and without it this is a dead end to diagnose.
-    const reason = document.createElement("div");
-    reason.className = "engine-load-reason";
-    reason.textContent = engineErrorReason(e);
-    $("engineLoadText").append(summary, "　", retry, reason);
-    console.error(e);
-  });
+  ensureEngine().catch((e) => { console.error(e); renderEngineLoadFailureUI(e); });
 }
 </script>
 

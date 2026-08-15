@@ -4,12 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0C0A07">
-<title>說明 — LoudMaster</title>
-<meta name="description" content="LoudMaster 怎麼運作、平台目標列表、常見問題。">
+<title data-i18n="meta_help_title">說明 — LoudMaster</title>
+<meta name="description" content="LoudMaster 怎麼運作、平台目標列表、常見問題。" data-i18n-attr="content:meta_help_desc">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+CjxyZWN0IHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgcng9IjciIGZpbGw9IiMwQzBBMDciLz4KPHJlY3QgeD0iNyIgeT0iMTMiIHdpZHRoPSI0IiBoZWlnaHQ9IjEyIiByeD0iMS41IiBmaWxsPSIjQzlBMjRCIi8+CjxyZWN0IHg9IjE0IiB5PSI3IiB3aWR0aD0iNCIgaGVpZ2h0PSIxOCIgcng9IjEuNSIgZmlsbD0iI0M5QTI0QiIvPgo8cmVjdCB4PSIyMSIgeT0iMTAiIHdpZHRoPSI0IiBoZWlnaHQ9IjE1IiByeD0iMS41IiBmaWxsPSIjQzlBMjRCIi8+Cjwvc3ZnPgo=">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="i18n.js"></script>
 <style>
 :root{
   --bg:#0C0A07;
@@ -57,6 +58,9 @@ body{
   background:var(--bg);color:var(--ivory);
   font-family:"Noto Sans TC",sans-serif;font-size:var(--fs-md);line-height:1.85;
 }
+/* See index.html for why: hides the body until the stored language (default
+   zh, so this only ever matters for "en") has actually been applied. */
+html.i18n-pending body{visibility:hidden}
 header{
   position:sticky;top:0;z-index:10;
   display:flex;align-items:center;gap:8px 14px;justify-content:space-between;
@@ -171,86 +175,87 @@ footer a{margin:0 8px}
 <header>
   <h1>Loud<span>Master</span></h1>
   <div style="display:flex;gap:8px">
-    <button class="btn icon" id="themeToggle" title="切換淺色 / 深色" aria-label="切換主題">◐</button>
-    <a class="btn" href="index.html">返回</a>
+    <button class="btn icon" id="themeToggle" title="切換淺色 / 深色" aria-label="切換主題" data-i18n-attr="title:header_theme_title,aria-label:help_theme_aria">◐</button>
+    <button class="btn icon" id="langToggle" title="Switch to English" aria-label="Switch to English" aria-pressed="false">EN</button>
+    <a class="btn" href="index.html" data-i18n="help_back_link">返回</a>
   </div>
 </header>
 
 <main>
 
 <section>
-<h2>它是怎麼運作的</h2>
+<h2 data-i18n="help_h2_how">它是怎麼運作的</h2>
 <div class="principle">
-  <p><strong>能用純增益解決的，就絕不做動態處理。</strong>先量測整段音訊，算出需要多少 dB，
+  <p data-i18n-html="help_principle_html"><strong>能用純增益解決的，就絕不做動態處理。</strong>先量測整段音訊，算出需要多少 dB，
   確認這個增益不會讓峰值超標，然後就只做「乘上一個固定數字」這一件事——數學上完全透明，
   音色、動態、立體聲相位、瞬態全部原封不動，只是變大聲。</p>
 </div>
-<p>只有在<strong>峰值真的不夠用</strong>的時候（例如素材裡有爆音、拍打聲），才會啟用真實峰值限幅器，
+<p data-i18n-html="help_limiter_note_html">只有在<strong>峰值真的不夠用</strong>的時候（例如素材裡有爆音、拍打聲），才會啟用真實峰值限幅器，
 而且只用在「差的那幾 dB」，成品做完後會再重新量一次確認真的達標。</p>
 
-<h3>流程</h3>
+<h3 data-i18n="help_h3_flow">流程</h3>
 <ol>
-  <li><strong>量測</strong>依 ITU-R BS.1770 / EBU R128 量測整合響度與真實峰值。</li>
-  <li><strong>決定</strong>算出需要幾 dB。峰值餘裕夠就純增益結束；不夠才動用限幅。</li>
-  <li><strong>輸出並驗證</strong>影像串流直接複製，音訊套用增益後編碼。做完立刻重新量測成品，
+  <li data-i18n-html="help_flow_1_html"><strong>量測</strong>依 ITU-R BS.1770 / EBU R128 量測整合響度與真實峰值。</li>
+  <li data-i18n-html="help_flow_2_html"><strong>決定</strong>算出需要幾 dB。峰值餘裕夠就純增益結束；不夠才動用限幅。</li>
+  <li data-i18n-html="help_flow_3_html"><strong>輸出並驗證</strong>影像串流直接複製，音訊套用增益後編碼。做完立刻重新量測成品，
   如果峰值還是超標會自動修正增益、重跑一次——這個保證來自實測的數字，不是假設安全邊際一定夠。</li>
 </ol>
 
-<h3>畫質完全不變</h3>
-<p>影像軌是直接複製，從頭到尾沒有解碼、沒有重新編碼。可以自己驗證：來源與成品的影像串流
+<h3 data-i18n="help_h3_quality">畫質完全不變</h3>
+<p data-i18n="help_quality_p">影像軌是直接複製，從頭到尾沒有解碼、沒有重新編碼。可以自己驗證：來源與成品的影像串流
 MD5 完全相同。</p>
-<pre><code>ffmpeg -i 原始.mp4 -map 0:v -c copy -f md5 -
+<pre><code data-i18n="help_md5_snippet">ffmpeg -i 原始.mp4 -map 0:v -c copy -f md5 -
 ffmpeg -i 成品.mp4 -map 0:v -c copy -f md5 -</code></pre>
 
-<h3>為什麼峰值上限是 -1 dBTP，而不是 0</h3>
-<p>數位訊號的取樣點之間還有波形。播放器把它還原成類比、或平台把它轉成 AAC/Opus 時，
+<h3 data-i18n="help_h3_why_minus1">為什麼峰值上限是 -1 dBTP，而不是 0</h3>
+<p data-i18n="help_why_minus1_p">數位訊號的取樣點之間還有波形。播放器把它還原成類比、或平台把它轉成 AAC/Opus 時，
 還原出來的波形峰值會比原本的取樣點更高。留 1 dB 餘裕，就是為了讓這個「還原後的超出量」
 不至於在觀眾的裝置上削波。這是所有串流平台交件規範的共同做法。</p>
 </section>
 
 <section>
-<h2>支援的平台</h2>
+<h2 data-i18n="help_h2_platforms">支援的平台</h2>
 <div class="table-wrap">
 <table>
-  <thead><tr><th>平台</th><th>目標</th></tr></thead>
+  <thead><tr><th data-i18n="help_th_platform">平台</th><th data-i18n="help_th_target">目標</th></tr></thead>
   <tbody>
     <tr><td>YouTube</td><td><span class="num">-14 LUFS / -1 dBTP</span></td></tr>
     <tr><td>Spotify</td><td><span class="num">-14 LUFS / -1 dBTP</span></td></tr>
     <tr><td>TikTok / Instagram / Reels</td><td><span class="num">-14 LUFS / -1 dBTP</span></td></tr>
     <tr><td>Apple Music / Podcasts</td><td><span class="num">-16 LUFS / -1 dBTP</span></td></tr>
-    <tr><td>廣播電視 EBU R128</td><td><span class="num">-23 LUFS / -1 dBTP</span></td></tr>
-    <tr><td>自訂目標</td><td>自行輸入 LUFS（-70 ～ -5）與真實峰值上限</td></tr>
+    <tr><td data-i18n="help_row_broadcast">廣播電視 EBU R128</td><td><span class="num">-23 LUFS / -1 dBTP</span></td></tr>
+    <tr><td data-i18n="help_row_custom">自訂目標</td><td data-i18n="help_row_custom_desc">自行輸入 LUFS（-70 ～ -5）與真實峰值上限</td></tr>
   </tbody>
 </table>
 </div>
-<p>如果平台不在清單上，或有特定交件規範，選「自訂目標…」自己輸入數字即可，運作方式完全相同。</p>
+<p data-i18n="help_platforms_note">如果平台不在清單上，或有特定交件規範，選「自訂目標…」自己輸入數字即可，運作方式完全相同。</p>
 </section>
 
 <section>
-<h2>常見問題</h2>
+<h2 data-i18n="help_h2_faq">常見問題</h2>
 
 <details>
-  <summary>處理完還是比別人的影片小聲？</summary>
-  <p>如果出現「比目標小聲」的提示，代表素材裡有少數非常大聲的瞬間（爆麥、拍桌、碰撞聲），
+  <summary data-i18n="faq_q1">處理完還是比別人的影片小聲？</summary>
+  <p data-i18n="faq_a1">如果出現「比目標小聲」的提示，代表素材裡有少數非常大聲的瞬間（爆麥、拍桌、碰撞聲），
   把整體音量「頂住」了。回去剪掉／修掉那幾個突波是最好的做法——限幅器能做的事有限，
   再多聲音會明顯變扁。</p>
 </details>
 
 <details>
-  <summary>為什麼影片輸出是 AAC？這不是有損嗎？</summary>
-  <p>是。改變音量必然要重新編碼音訊，這一步無法避免。瀏覽器版統一輸出 AAC／Opus，
+  <summary data-i18n="faq_q2">為什麼影片輸出是 AAC？這不是有損嗎？</summary>
+  <p data-i18n="faq_a2">是。改變音量必然要重新編碼音訊，這一步無法避免。瀏覽器版統一輸出 AAC／Opus，
   實務上聽不出差異。</p>
 </details>
 
 <details>
-  <summary>純音訊檔案為什麼輸出的是 WAV？</summary>
-  <p>WAV 是無損格式，瀏覽器版對音訊檔一律輸出 24-bit 無損 WAV（並套用三角形高通 dither，
+  <summary data-i18n="faq_q3">純音訊檔案為什麼輸出的是 WAV？</summary>
+  <p data-i18n="faq_a3">WAV 是無損格式，瀏覽器版對音訊檔一律輸出 24-bit 無損 WAV（並套用三角形高通 dither，
   避免降低位元深度時產生的量化雜訊），確保「不改變音質」這個承諾百分之百成立。</p>
 </details>
 
 <details>
-  <summary>可以順便降噪嗎？</summary>
-  <p>可以。就緒畫面有一個「降噪比較（選用）」勾選框，預設不開；開啟後會同時處理原始與
+  <summary data-i18n="faq_q4">可以順便降噪嗎？</summary>
+  <p data-i18n="faq_a4">可以。就緒畫面有一個「降噪比較（選用）」勾選框，預設不開；開啟後會同時處理原始與
   降噪兩版，完成後可以 A/B 聽過再決定下載哪個。降噪偏保守，適合底噪、電流聲、風聲這類
   穩定的雜訊，很吵或不規則的雜訊沒辦法完全去除，且因為要處理兩次，時間會比平常長。
   影片檔比較時降噪版只有聲音、沒有畫面（避免手機同時載入兩份完整影片），下載時才會
@@ -258,46 +263,46 @@ ffmpeg -i 成品.mp4 -map 0:v -c copy -f md5 -</code></pre>
 </details>
 
 <details>
-  <summary>可以自己輸入目標響度嗎？</summary>
-  <p>可以。平台選單選「自訂目標…」，就能自行輸入整合響度（LUFS）與真實峰值上限（dBTP），
+  <summary data-i18n="faq_q5">可以自己輸入目標響度嗎？</summary>
+  <p data-i18n="faq_a5">可以。平台選單選「自訂目標…」，就能自行輸入整合響度（LUFS）與真實峰值上限（dBTP），
   運作方式和選預設平台完全相同，一樣是先量測、算出增益，不夠才動用限幅。</p>
 </details>
 
 <details>
-  <summary>5.1 環繞聲道的影片也能處理嗎？</summary>
-  <p>可以。量測時會依 ITU-R BS.1770 對環繞聲道正確加權（不是只看前左右兩聲道），
+  <summary data-i18n="faq_q6">5.1 環繞聲道的影片也能處理嗎？</summary>
+  <p data-i18n="faq_a6">可以。量測時會依 ITU-R BS.1770 對環繞聲道正確加權（不是只看前左右兩聲道），
   聲道數與空間定位也會完整保留，處理前後只有整體音量不同。</p>
 </details>
 
 <details>
-  <summary>可以匯出處理紀錄嗎？</summary>
-  <p>處理完成後可以下載一份 JSON 格式的響度報告，記錄處理前後的 LUFS／真實峰值、使用的目標、
+  <summary data-i18n="faq_q7">可以匯出處理紀錄嗎？</summary>
+  <p data-i18n="faq_a7">處理完成後可以下載一份 JSON 格式的響度報告，記錄處理前後的 LUFS／真實峰值、使用的目標、
   是否動用限幅等資訊，方便存檔或交給後製團隊核對。</p>
 </details>
 
 <details>
-  <summary>怎麼知道素材裡響度有沒有忽大忽小？</summary>
-  <p>完成畫面可以展開「顯示響度曲線」，看整段素材處理前後的響度隨時間變化，
+  <summary data-i18n="faq_q8">怎麼知道素材裡響度有沒有忽大忽小？</summary>
+  <p data-i18n="faq_a8">完成畫面可以展開「顯示響度曲線」，看整段素材處理前後的響度隨時間變化，
   方便確認有沒有某幾段特別大聲或特別小聲。</p>
 </details>
 
 <details>
-  <summary>檔案不會被上傳到哪裡吧？</summary>
-  <p>不會。整個處理過程用的是 WebAssembly 版的 ffmpeg，直接在你的瀏覽器裡執行，
+  <summary data-i18n="faq_q9">檔案不會被上傳到哪裡吧？</summary>
+  <p data-i18n="faq_a9">不會。整個處理過程用的是 WebAssembly 版的 ffmpeg，直接在你的瀏覽器裡執行，
   檔案從頭到尾只存在你的裝置記憶體裡，沒有任何網路上傳。這也是為什麼瀏覽器分頁關掉、
   處理就會中斷——沒有伺服器在背景繼續幫你跑。</p>
 </details>
 
 <details>
-  <summary>影片很大或很長，處理很慢或分頁當掉怎麼辦？</summary>
-  <p>瀏覽器版沒有硬性大小限制，但影片會整個載入記憶體處理，沒有串流機制，
+  <summary data-i18n="faq_q10">影片很大或很長，處理很慢或分頁當掉怎麼辦？</summary>
+  <p data-i18n="faq_a10">瀏覽器版沒有硬性大小限制，但影片會整個載入記憶體處理，沒有串流機制，
   裝置效能與可用記憶體是實際上限。建議以短片（幾分鐘、幾百 MB 內）為主，
   或先用短片段測試看看。</p>
 </details>
 
 <details>
-  <summary>我的影片格式顯示不支援怎麼辦？</summary>
-  <p>目前支援 H.264／HEVC（輸出 MP4）與 VP8／VP9／AV1（輸出 WebM）的影片，
+  <summary data-i18n="faq_q11">我的影片格式顯示不支援怎麼辦？</summary>
+  <p data-i18n="faq_a11">目前支援 H.264／HEVC（輸出 MP4）與 VP8／VP9／AV1（輸出 WebM）的影片，
   涵蓋絕大多數手機錄影與網路影片。遇到其他格式，建議先用其他工具轉成
   MP4 或 WebM 再上傳。</p>
 </details>
@@ -327,6 +332,10 @@ ffmpeg -i 成品.mp4 -map 0:v -c copy -f md5 -</code></pre>
     try { localStorage.setItem(KEY, light ? "light" : "dark"); } catch (e) {}
   });
 })();
+
+// This page has no JS-managed dynamic text beyond what data-i18n already
+// covers, so no afterApply hook is needed here (contrast with index.html).
+initSmI18n();
 </script>
 
 </body>
