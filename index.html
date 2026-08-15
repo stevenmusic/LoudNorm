@@ -136,7 +136,11 @@ header h1 span{color:var(--ivory);font-weight:600}
 .btn.primary{background:var(--gold);color:var(--bg);font-weight:700}
 .btn.primary:hover,.btn.primary:focus-visible{background:var(--gold-bright)}
 .btn.primary:disabled{opacity:.35;cursor:not-allowed;background:var(--gold);color:var(--bg)}
-.btn.icon{width:38px;padding:0;font-size:var(--fs-lg)}
+/* aspect-ratio 讓寬度自動跟著當下 .btn 的高度走(不同斷點高度不一樣),永遠是正圓形,
+   不用像固定 width 那樣每個斷點還要另外對一次寬度 */
+.btn.icon{aspect-ratio:1;padding:0;font-size:var(--fs-lg)}
+/* 淺色模式開啟時,圖示按鈕維持跟 .btn.primary 一樣的「啟用中」視覺語言(跟 ScrollScore 一致) */
+#themeToggle[aria-pressed="true"]{background:var(--gold);color:var(--bg)}
 .btn.ghost{border-color:var(--line);color:var(--muted-bright)}
 .btn.ghost:hover{background:var(--surface-inset-hi);color:var(--ivory);border-color:var(--line)}
 
@@ -382,6 +386,14 @@ footer a:hover{color:var(--gold-bright)}
 @media (max-width:600px){
   .card{padding:26px 18px}
   .actions{flex-direction:column}
+  .btn{padding:0 10px;height:34px;font-size:var(--fs-sm)}
+}
+/* 螢幕更窄(iPhone SE 等):按鈕內距再收緊,跟 ScrollScore/SightScore/HarmonyMap 同一組數值 */
+@media (max-width:380px){
+  .btn{padding:0 8px;height:32px}
+}
+@media (max-width:340px){
+  .btn{padding:0 5px}
 }
 /* 手機橫向 / 螢幕高度極矮:頂欄收扁,把高度讓給中間的卡片 */
 @media (max-height:420px){
@@ -432,7 +444,12 @@ footer a:hover{color:var(--gold-bright)}
     <h1>Loud<span>Master</span></h1>
   </div>
   <div class="header-right">
-    <button class="btn icon" id="themeToggle" title="切換淺色 / 深色" aria-label="切換淺色或深色主題" data-i18n-attr="title:header_theme_title,aria-label:header_theme_aria">◐</button>
+    <button class="btn icon" id="themeToggle" title="切換淺色 / 深色" aria-label="切換淺色或深色主題" aria-pressed="false" data-i18n-attr="title:header_theme_title,aria-label:header_theme_aria">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 3a9 9 0 000 18z" fill="currentColor" stroke="none"/>
+      </svg>
+    </button>
     <button class="btn icon" id="langToggle" title="Switch to English" aria-label="Switch to English" aria-pressed="false">EN</button>
     <a class="btn" href="help.html" data-i18n="header_help_link">說明</a>
   </div>
@@ -1947,6 +1964,7 @@ $("variantDenoiseBtn").addEventListener("click", () => applyVariant("denoised"))
   const toggle = $("themeToggle");
   function apply(light) {
     document.body.classList.toggle("light", light);
+    toggle.setAttribute("aria-pressed", String(light));
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", light ? "#FBF7EE" : "#0C0A07");
   }
