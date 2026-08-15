@@ -133,6 +133,9 @@ header h1 span{color:var(--ivory);font-weight:600}
   transition:background .2s,color .2s;white-space:nowrap;text-decoration:none;
 }
 .btn:hover,.btn:focus-visible{background:var(--gold);color:var(--bg);outline:none}
+/* 「說明」/「Help」中英文長度不同,頂欄靠右對齊時整排按鈕會跟著位移——
+   固定保留較寬那個語言的寬度,兩種語言下都一樣寬,切換語言不會讓按鈕移動 */
+#helpLink{min-width:64px}
 .btn.primary{background:var(--gold);color:var(--bg);font-weight:700}
 .btn.primary:hover,.btn.primary:focus-visible{background:var(--gold-bright)}
 .btn.primary:disabled{opacity:.35;cursor:not-allowed;background:var(--gold);color:var(--bg)}
@@ -387,13 +390,16 @@ footer a:hover{color:var(--gold-bright)}
   .card{padding:26px 18px}
   .actions{flex-direction:column}
   .btn{padding:0 10px;height:34px;font-size:var(--fs-sm)}
+  #helpLink{min-width:50px}
 }
 /* 螢幕更窄(iPhone SE 等):按鈕內距再收緊,跟 ScrollScore/SightScore/HarmonyMap 同一組數值 */
 @media (max-width:380px){
   .btn{padding:0 8px;height:32px}
+  #helpLink{min-width:46px}
 }
 @media (max-width:340px){
   .btn{padding:0 5px}
+  #helpLink{min-width:40px}
 }
 /* 手機橫向 / 螢幕高度極矮:頂欄收扁,把高度讓給中間的卡片 */
 @media (max-height:420px){
@@ -451,7 +457,7 @@ footer a:hover{color:var(--gold-bright)}
       </svg>
     </button>
     <button class="btn icon" id="langToggle" title="Switch to English" aria-label="Switch to English" aria-pressed="false">EN</button>
-    <a class="btn" href="help.html" data-i18n="header_help_link">說明</a>
+    <a class="btn" id="helpLink" href="help.html" data-i18n="header_help_link">說明</a>
   </div>
 </header>
 
