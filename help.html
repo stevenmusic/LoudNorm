@@ -318,16 +318,29 @@ ffmpeg -i 成品.mp4 -map 0:v -c copy -f md5 -</code></pre>
 
 <script>
 (function () {
-  var KEY = "loudmaster-theme";
+  /* sm_theme 跟 sm_lang 一樣是四個工具共用的 localStorage key,值只有 "light" / "dark"。
+     四個工具同一個 origin,在任一個切過主題,其他三個打開就是同一個。沒存過的時候用本
+     工具自己的預設(深色)——共用的是「使用者的選擇」,不是「還沒選之前的預設」。
+     LEGACY_KEY 是舊版自己的 key,值的寫法一樣;既有使用者升上來時 sm_theme 還是空的,
+     讀它當備援。只讀不寫,下次切換就寫進 sm_theme。 */
+  var KEY = "sm_theme";
+  var LEGACY_KEY = "loudmaster-theme";
+  function savedIsLight() {
+    try {
+      var v = localStorage.getItem(KEY);
+      if (v === "light" || v === "dark") return v === "light";
+      var legacy = localStorage.getItem(LEGACY_KEY);
+      if (legacy === "light" || legacy === "dark") return legacy === "light";
+    } catch (e) {}
+    return false;
+  }
   var toggle = document.getElementById("themeToggle");
   function apply(light) {
     document.body.classList.toggle("light", light);
     var meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", light ? "#FBF7EE" : "#0C0A07");
   }
-  var saved = null;
-  try { saved = localStorage.getItem(KEY); } catch (e) {}
-  apply(saved === "light");
+  apply(savedIsLight());
   toggle.addEventListener("click", function () {
     var light = !document.body.classList.contains("light");
     apply(light);
