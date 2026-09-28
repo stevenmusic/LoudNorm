@@ -118,6 +118,7 @@ var I18N = {
     error_default: "發生錯誤。",
     error_retry: "再試一次",
     footer_loading: "正在載入處理引擎…",
+    footer_contact: "問題回報：",
 
     // ── index.html: engine loading / errors (runtime) ──
     engine_load_code: "載入處理引擎程式…",
@@ -297,6 +298,7 @@ var I18N = {
     error_default: "Something went wrong.",
     error_retry: "Try again",
     footer_loading: "Loading processing engine…",
+    footer_contact: "Feedback: ",
 
     engine_load_code: "Loading engine code…",
     engine_load_code_timeout_label: "Load engine code",
